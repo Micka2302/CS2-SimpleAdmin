@@ -24,7 +24,7 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
             return (false, ex.Message);
         }
     }
-    
+
     public Task DatabaseMigrationAsync()
     {
         var migration = new Migration(CS2_SimpleAdmin.Instance.ModuleDirectory + "/Database/Migrations/Mysql");
@@ -51,8 +51,8 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
                                    FROM sa_bans
                                    WHERE server_id = @serverId
                                    """;
-    }    
-    
+    }
+
     public static string GetBanUpdatedSelectQuery(bool multiServer)
     {
         return multiServer ? """
@@ -111,12 +111,12 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
                ORDER BY sa_admins.player_steamid
                """;
     }
-    
+
     public string GetDeleteAdminQuery(bool globalDelete) =>
         globalDelete
             ? "DELETE FROM sa_admins WHERE player_steamid = @PlayerSteamID"
             : "DELETE FROM sa_admins WHERE player_steamid = @PlayerSteamID AND server_id = @ServerId";
-    
+
     public string GetAddAdminQuery() =>
         "INSERT INTO sa_admins (player_steamid, player_name, immunity, ends, created, server_id) " +
         "VALUES (@playerSteamId, @playerName, @immunity, @ends, @created, @serverid); SELECT LAST_INSERT_ID();";
@@ -132,6 +132,14 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
                """;
     }
 
+    public string GetGroupsQuery_CSS()
+    {
+        return """
+              SELECT sg.id AS group_name, sg.flags, sg.immunity
+              FROM sa_admins_groups sg
+              """;
+    }
+
     public string GetAddAdminFlagsQuery() =>
         "INSERT INTO sa_admins_flags (admin_id, flag) VALUES (@adminId, @flag);";
 
@@ -140,7 +148,7 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
 
     public string GetAddGroupQuery() =>
         "INSERT INTO sa_groups (name, immunity) VALUES (@groupName, @immunity); SELECT LAST_INSERT_ID();";
-    
+
     public string GetGroupIdByNameQuery() =>
         """
         SELECT sgs.group_id
@@ -161,7 +169,7 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
 
     public string GetDeleteOldAdminsQuery() =>
         "DELETE FROM sa_admins WHERE ends IS NOT NULL AND ends <= @CurrentTime;";
-    
+
     public string GetAddBanQuery()
     {
         return """
@@ -172,7 +180,7 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
                    SELECT LAST_INSERT_ID();
                """;
     }
-    
+
     public string GetAddBanBySteamIdQuery()
     {
         return """
@@ -193,7 +201,7 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
                        (@playerIp, @adminSteamid, @adminName, @banReason, @duration, @ends, @created, @serverid);
                """;
     }
-    
+
     public string GetUnbanRetrieveBansQuery(bool multiServer)
     {
         return multiServer
@@ -231,7 +239,7 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
             ? "UPDATE sa_bans SET player_ip = NULL WHERE status = 'ACTIVE' AND ends <= @ipBansTime"
             : "UPDATE sa_bans SET player_ip = NULL WHERE status = 'ACTIVE' AND ends <= @ipBansTime AND server_id = @serverid";
     }
-    
+
     public string GetAddMuteQuery(bool includePlayerName) =>
         includePlayerName
             ? """
@@ -309,8 +317,8 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
             : (timeMode == 1
                 ? "UPDATE sa_mutes SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND `duration` > 0 AND ends <= @CurrentTime AND server_id = @serverid"
                 : "UPDATE sa_mutes SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND `duration` > 0 AND `passed` >= `duration` AND server_id = @serverid");
-    
-    
+
+
     public string GetAddWarnQuery(bool includePlayerName) =>
         includePlayerName
             ? """

@@ -65,7 +65,7 @@ public partial class CS2_SimpleAdmin
     internal static Api.CS2_SimpleAdminApi? SimpleAdminApi { get; private set; }
 
     // Managers
-    internal PermissionManager PermissionManager = new(DatabaseProvider);
+    internal PermissionManager PermissionManager = new(DatabaseProvider, null);
     internal BanManager BanManager = new(DatabaseProvider);
     internal MuteManager MuteManager = new(DatabaseProvider);
     internal WarnManager WarnManager = new(DatabaseProvider);
@@ -80,6 +80,6 @@ public partial class CS2_SimpleAdmin
     internal Timer? PlayersTimer = null;
 
     // Funny list
-    private readonly List<string> _requiredPlugins = ["MenuManagerCore", "PlayerSettings"];
-    private readonly List<string> _requiredShared = ["MenuManagerApi", "PlayerSettingsApi", "AnyBaseLib", "CS2-SimpleAdminApi"];
+    private readonly List<string> _requiredPlugins = [];
+    private readonly List<string> _requiredShared = ["KitsuneMenu", "CS2-SimpleAdminApi"];
 }

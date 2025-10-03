@@ -155,7 +155,7 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
         multiServer
             ? "UPDATE sa_bans SET player_ip = NULL WHERE status = 'ACTIVE' AND ends <= @ipBansTime"
             : "UPDATE sa_bans SET player_ip = NULL WHERE status = 'ACTIVE' AND ends <= @ipBansTime AND server_id = @serverid";
-    
+
     public string GetAdminsQuery() =>
         """
         SELECT sa_admins.player_steamid, sa_admins.player_name, sa_admins_flags.flag, sa_admins.immunity, sa_admins.ends
@@ -185,6 +185,12 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
         JOIN sa_groups_servers g ON f.group_id = g.group_id
         JOIN sa_groups sg ON sg.id = g.group_id
         WHERE (g.server_id = @serverid OR server_id IS NULL)
+        """;
+
+    public string GetGroupsQuery_CSS() =>
+        """
+        SELECT sg.id AS group_name, sg.flags, sg.immunity
+        FROM sa_admins_groups sg
         """;
 
     public string GetAddAdminFlagsQuery() =>
@@ -220,7 +226,7 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
 
     public string GetDeleteOldAdminsQuery() =>
         "DELETE FROM sa_admins WHERE ends IS NOT NULL AND ends <= @CurrentTime;";
-    
+
     public string GetAddMuteQuery(bool includePlayerName) =>
         includePlayerName
             ? """
@@ -298,7 +304,7 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
             : (timeMode == 1
                 ? "UPDATE sa_mutes SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND duration > 0 AND ends <= @CurrentTime AND server_id = @serverid"
                 : "UPDATE sa_mutes SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND duration > 0 AND passed >= duration AND server_id = @serverid");
-    
+
     public string GetAddWarnQuery(bool includePlayerName) =>
         includePlayerName
             ? """

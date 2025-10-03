@@ -20,6 +20,7 @@ public interface IDatabaseProvider
     string GetAddAdminFlagsQuery();
     string GetUpdateAdminGroupQuery();
     string GetGroupsQuery();
+    string GetGroupsQuery_CSS();
     string GetGroupIdByNameQuery();
     string GetAddGroupQuery();
     string GetAddGroupFlagsQuery();

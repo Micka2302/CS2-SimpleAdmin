@@ -231,7 +231,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         if (Config.EnableUpdateCheck)
             Task.Run(async () => await PluginInfo.CheckVersion(ModuleVersion, Logger));
 
-        PermissionManager = new PermissionManager(DatabaseProvider);
+        PermissionManager = new PermissionManager(DatabaseProvider, Config);
         BanManager = new BanManager(DatabaseProvider);
         MuteManager = new MuteManager(DatabaseProvider);
         WarnManager = new WarnManager(DatabaseProvider);

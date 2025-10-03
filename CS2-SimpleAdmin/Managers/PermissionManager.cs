@@ -10,7 +10,7 @@ using CS2_SimpleAdmin.Database;
 
 namespace CS2_SimpleAdmin.Managers;
 
-public class PermissionManager(IDatabaseProvider? databaseProvider)
+public class PermissionManager(IDatabaseProvider? databaseProvider, CS2_SimpleAdminConfig? config)
 {
 	// Unused for now
 	//public static readonly ConcurrentDictionary<string, ConcurrentBag<string>> _adminCache = new ConcurrentDictionary<string, ConcurrentBag<string>>();
@@ -305,7 +305,16 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 			// var sql = "SELECT group_id FROM sa_groups_servers WHERE (server_id = @serverid OR server_id IS NULL)";
 			// var groupDataSql = connection.Query<int>(sql, new { serverid = CS2_SimpleAdmin.ServerId }).ToList();
 
-			var sql = databaseProvider.GetGroupsQuery();
+			string sql;
+
+			if (config?.IsCSSPanel == true)
+			{
+				sql = databaseProvider.GetGroupsQuery_CSS();
+			}
+			else
+			{
+				sql = databaseProvider.GetGroupsQuery();
+			}
 			var groupData = connection.Query(sql, new { serverid = CS2_SimpleAdmin.ServerId }).ToList();
 			if (groupData.Count == 0)
 			{
@@ -316,18 +325,28 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 			foreach (var row in groupData)
 			{
 				var groupName = (string)row.group_name;
-				var flag = (string)row.flag;
-				var immunity = (int)row.immunity;
+				var flags = (string)row.flags;
+				var immunity = (string)row.immunity;
 
 				// Check if the group name already exists in the dictionary
 				if (!groupInfoDictionary.TryGetValue(groupName, out (List<string>, int) value))
 				{
-					value = ([], immunity);
+					value = ([], int.Parse(immunity));
 					// If it doesn't exist, add a new entry with an empty list of flags and immunity
 					groupInfoDictionary[groupName] = value;
 				}
 
-				value.Item1.Add(flag);
+				if (flags.Contains(","))
+				{
+					foreach (var flag in flags.Split(',').ToList())
+					{
+						value.Item1.Add(flag);
+					}
+				}
+				else
+				{
+					value.Item1.Add(flags);
+				}
 			}
 
 			return groupInfoDictionary;
