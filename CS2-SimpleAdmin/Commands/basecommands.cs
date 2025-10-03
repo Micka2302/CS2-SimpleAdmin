@@ -551,12 +551,10 @@ public partial class CS2_SimpleAdmin
                 caller.ChangeTeam(CsTeam.Spectator);
             SimpleAdminApi?.OnAdminToggleSilentEvent(caller.Slot, false);
             caller.ChangeTeam(CsTeam.Spectator);
-            Server.ExecuteCommand($"mm_removeexcludeslot {caller.Slot}");
         }
         else
         {
             Server.ExecuteCommand("sv_disable_teamselect_menu 1");
-            Server.ExecuteCommand($"mm_excludeslot {caller.Slot}");
 
             if (caller.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE)
                 caller.PlayerPawn.Value?.CommitSuicide(true, false);

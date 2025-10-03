@@ -152,8 +152,6 @@ public partial class CS2_SimpleAdmin
         Logger.LogCritical("[OnClientDisconnect] After Check");
 #endif
 
-        Server.ExecuteCommand($"mm_removeexcludeslot {player.Slot}");
-
         try
         {
             if (DisconnectedPlayers.Count >= Config.OtherSettings.DisconnectedPlayersHistoryCount)
