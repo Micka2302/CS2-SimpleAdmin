@@ -16,6 +16,7 @@ env:
   PROJECT_NAME_CS2_SIMPLEADMIN: "CS2-SimpleAdmin"
   PROJECT_PATH_CS2_SIMPLEADMINAPI: "CS2-SimpleAdminApi/CS2-SimpleAdminApi.csproj"
   PROJECT_NAME_CS2_SIMPLEADMINAPI: "CS2-SimpleAdminApi"
+  PROJECT_NAME_KitsuneMenu: "KitsuneMenu"
   PROJECT_PATH_STEALTHMODULE: "Modules/CS2-SimpleAdmin_StealthModule/CS2-SimpleAdmin_StealthModule.csproj"
   PROJECT_NAME_STEALTHMODULE: "CS2-SimpleAdmin_StealthModule"
   OUTPUT_PATH: "./counterstrikesharp"
@@ -57,6 +58,8 @@ jobs:
           cp -r ${{ env.TMP_PATH }}/${{ env.PROJECT_NAME_CS2_SIMPLEADMIN }}/* ${{ env.OUTPUT_PATH }}/plugins/CS2-SimpleAdmin/
           cp -r ${{ env.TMP_PATH }}/${{ env.PROJECT_NAME_STEALTHMODULE }}/* ${{ env.OUTPUT_PATH }}/plugins/CS2-SimpleAdmin_StealthModule
           cp -r ${{ env.TMP_PATH }}/${{ env.PROJECT_NAME_CS2_SIMPLEADMINAPI }}/* ${{ env.OUTPUT_PATH }}/shared/CS2-SimpleAdminApi/
+          mkdir -p ${{ env.OUTPUT_PATH }}/shared/${{ env.PROJECT_NAME_KitsuneMenu }}
+          cp ${{ env.TMP_PATH }}/${{ env.PROJECT_NAME_CS2_SIMPLEADMIN }}/${{ env.PROJECT_NAME_KitsuneMenu }}.dll ${{ env.OUTPUT_PATH }}/shared/${{ env.PROJECT_NAME_KitsuneMenu }}/
 
       - name: Zip Main Build Output
         run: zip -r CS2-SimpleAdmin-${{ steps.get_version.outputs.VERSION }}.zip ${{ env.OUTPUT_PATH }}
