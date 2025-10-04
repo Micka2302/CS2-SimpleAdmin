@@ -15,6 +15,7 @@ public interface IDatabaseProvider
 
     // PermissionManager
     string GetAdminsQuery();
+    string GetAdminsQuery_CSS();
     string GetDeleteAdminQuery(bool globalDelete);
     string GetAddAdminQuery();
     string GetAddAdminFlagsQuery();

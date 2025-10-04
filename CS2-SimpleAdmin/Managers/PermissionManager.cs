@@ -180,7 +180,17 @@ public class PermissionManager(IDatabaseProvider? databaseProvider, CS2_SimpleAd
 		try
 		{
 			await using var connection = await databaseProvider.CreateConnectionAsync();
-			var sql = databaseProvider.GetAdminsQuery();
+			string sql;
+
+			if (config?.IsCSSPanel == true)
+			{
+				sql = databaseProvider.GetAdminsQuery_CSS();
+			}
+			else
+			{
+				sql = databaseProvider.GetAdminsQuery();
+			}
+
 			var admins = (await connection.QueryAsync(sql, new { CurrentTime = now, serverid = CS2_SimpleAdmin.ServerId })).ToList();
 
 			var groupedPlayers = admins
@@ -464,7 +474,7 @@ public class PermissionManager(IDatabaseProvider? databaseProvider, CS2_SimpleAd
 		// foreach (var player in allPlayers)
 		// {
 		// 	var (steamId, name, flags, immunity, ends) = player;
-		//           
+		//
 		// 	Console.WriteLine($"Player SteamID: {steamId}");
 		// 	Console.WriteLine($"Player Name: {name}");
 		// 	Console.WriteLine($"Flags: {string.Join(", ", flags)}");
@@ -490,6 +500,11 @@ public class PermissionManager(IDatabaseProvider? databaseProvider, CS2_SimpleAd
 						},
 						(acc, player) =>
 						{
+							// Split entries that contain commas
+							var splitFlags = player.flags
+								.SelectMany(f => f.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+								.ToList();
+
 							// Merge identities
 							if (string.IsNullOrEmpty(acc.identity) && !string.IsNullOrEmpty(player.identity.ToString()))
 							{
@@ -502,8 +517,8 @@ public class PermissionManager(IDatabaseProvider? databaseProvider, CS2_SimpleAd
 							// Combine flags and groups
 							acc = acc with
 							{
-								flags = acc.flags.Concat(player.flags.Where(flag => flag.StartsWith($"@"))).Distinct().ToList(),
-								groups = acc.groups.Concat(player.flags.Where(flag => flag.StartsWith($"#"))).Distinct().ToList()
+								flags = acc.flags.Concat(splitFlags.Where(flag => flag.StartsWith("@"))).Distinct().ToList(),
+								groups = acc.groups.Concat(splitFlags.Where(flag => flag.StartsWith("#"))).Distinct().ToList()
 							};
 
 							return acc;

@@ -112,6 +112,31 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
                """;
     }
 
+    public string GetAdminsQuery_CSS()
+    {
+        return """
+                SELECT
+                    a.player_steamid,
+                    a.player_name,
+                    a.flags AS flag,
+                    a.immunity,
+                    a.ends
+                FROM sa_admins a
+                WHERE
+                    (
+                        a.server_id = @serverid
+                        OR
+                        a.servers_groups IN (
+                            SELECT sg.id
+                            FROM sa_servers_groups sg
+                            WHERE FIND_IN_SET(@serverid, sg.servers)
+                        )
+                    OR (server_id is NULL AND servers_groups is NULL))
+                    AND a.player_steamid != 'Console'
+                    AND (a.ends IS NULL OR a.ends > @CurrentTime);
+               """;
+    }
+
     public string GetDeleteAdminQuery(bool globalDelete) =>
         globalDelete
             ? "DELETE FROM sa_admins WHERE player_steamid = @PlayerSteamID"
