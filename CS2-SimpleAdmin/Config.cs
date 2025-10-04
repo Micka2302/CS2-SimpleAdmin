@@ -257,12 +257,6 @@ public class OtherSettings
     [JsonPropertyName("AdditionalCommandsToLog")]
     public List<string> AdditionalCommandsToLog { get; set; } = new();
 
-    [JsonPropertyName("HideStealthPlayersFromSpecList")]
-    public bool HideStealthPlayersFromSpecList { get; set; } = true;
-
-    [JsonPropertyName("HideAdminsOnJoinPermission")]
-    public List<string> HideAdminsOnJoinPermission { get; set; } = ["@css/unban"];
-
     [JsonPropertyName("IgnoredIps")]
     public List<string> IgnoredIps { get; set; } = new();
 }

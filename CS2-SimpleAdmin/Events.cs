@@ -29,8 +29,6 @@ public partial class CS2_SimpleAdmin
         RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
         RegisterListener<Listeners.OnClientConnected>(OnClientConnected);
         RegisterListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
-        if (Config.OtherSettings.HideStealthPlayersFromSpecList)
-            RegisterListener<Listeners.CheckTransmit>(CheckTransmitListener);
         if (Config.OtherSettings.UserMessageGagChatType)
             HookUserMessage(118, HookUmChat);
 
@@ -80,46 +78,6 @@ public partial class CS2_SimpleAdmin
 
         _serverLoading = true;
         new ServerManager().LoadServerData();
-    }
-
-
-    private void CheckTransmitListener(CCheckTransmitInfoList infoList)
-    {
-        // Code taken from admin esp by aqua
-        foreach ((CCheckTransmitInfo info, CCSPlayerController? player) in infoList)
-        {
-            if (player is null || player.IsValid is not true) continue;
-
-            //iterate cached players
-            for (int i = 0; i < CachedPlayers.Count(); i++)
-            {
-                //leave self's observerPawn so it can spectate and check if feature is enabled
-                //we are clearing the whole spectator list as it doesn't work relaibly per person basis
-                if (CachedPlayers[i] is null || CachedPlayers[i].IsValid is not true) continue;
-
-                //check if it 'us' in the current context and do the magic only if it's not
-                if (CachedPlayers[i].Slot != player.Slot)
-                {
-
-                    //get the target's pawn
-                    var targetPawn = CachedPlayers[i].PlayerPawn.Value;
-                    if (targetPawn is null || targetPawn.IsValid is not true) continue;
-
-                    //get the target's observerpawn
-                    var targetObserverPawn = CachedPlayers[i].ObserverPawn;
-                    if (targetObserverPawn is null
-                    || targetObserverPawn.IsValid is not true
-                    || targetObserverPawn.Value is null
-                    || targetObserverPawn.Value.OriginalController.Value is null
-                    || !SilentPlayers.Contains(targetObserverPawn.Value.OriginalController.Value.Slot)) continue;
-
-                    //we clear the spec list via clearing all of the observerTarget' pawns indexes
-                    //from the Observer_services class that any cheat uses as a method to campare
-                    //against current players in the server
-                    info.TransmitEntities.Remove((int)targetObserverPawn.Index);
-                }
-            }
-        }
     }
 
     [GameEventHandler(HookMode.Pre)]
@@ -283,22 +241,6 @@ public partial class CS2_SimpleAdmin
             return HookResult.Continue;
 
         CachedPlayers.Add(player);
-
-        new PlayerManager().LoadPlayerData(player);
-
-        if (Config.OtherSettings.HideAdminsOnJoinPermission.Count() == 0 || !Config.OtherSettings.HideAdminsOnJoinPermission.Any((string permission) => AdminManager.PlayerHasPermissions(player, permission)))
-        {
-            return HookResult.Continue;
-        }
-
-        AddTimer(0.5f, () =>
-        {
-            player.ChangeTeam(CsTeam.Spectator);
-        });
-        AddTimer(0.65f, () =>
-        {
-            player.ExecuteClientCommandFromServer("css_hide");
-        });
 
         if (player is { IsBot: true, IsHLTV: false })
         {

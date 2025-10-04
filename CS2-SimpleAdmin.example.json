@@ -27,10 +27,7 @@
     "UserMessageGagChatType": false,
     "CheckMultiAccountsByIp": true,
     "AdditionalCommandsToLog": [],
-    "HideStealthPlayersFromSpecList": false,
-    "HideAdminsOnJoinPermission": [
-      "@css/unban"
-    ]
+    "IgnoredIps": []
   },
   "EnableMetrics": true,
   "EnableUpdateCheck": true,
