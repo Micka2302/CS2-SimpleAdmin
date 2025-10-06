@@ -191,9 +191,6 @@ internal static class Helper
             player.Disconnect(reason); 
         }
         
-        if (CS2_SimpleAdmin.UnlockedCommands && reason == NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED)
-            Server.ExecuteCommand($"banid 1 {new SteamID(player.SteamID).SteamId3}");
-
         // if (!string.IsNullOrEmpty(reason))
         // {
         // 	var escapeChars = reason.IndexOfAny([';', '|']);
@@ -245,9 +242,6 @@ internal static class Helper
             player.Disconnect(reason);
         }
         
-        if (CS2_SimpleAdmin.UnlockedCommands && reason == NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED)
-            Server.ExecuteCommand($"banid 1 {new SteamID(player.SteamID).SteamId3}");
-
         // if (!string.IsNullOrEmpty(reason))
         // {
         // 	var escapeChars = reason.IndexOfAny([';', '|']);
