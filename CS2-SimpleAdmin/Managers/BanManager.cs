@@ -1,4 +1,4 @@
-﻿using CounterStrikeSharp.API;
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using CS2_SimpleAdminApi;
 using Dapper;
@@ -127,11 +127,10 @@ internal class BanManager(Database.Database? database)
     {
         if (database == null) return false;
 
-        if (player.IpAddress == null)
-        {
-            return false;
-        }
-        
+        var ipAddress = player.IpAddress;
+        var hasIp = !string.IsNullOrEmpty(ipAddress);
+        var isIpIgnored = hasIp && CS2_SimpleAdmin.Instance.Config.OtherSettings.IgnoredIps.Contains(ipAddress!);
+
 #if DEBUG
         if (CS2_SimpleAdmin._logger != null)
             CS2_SimpleAdmin._logger.LogCritical($"IsPlayerBanned for {player.Name}");
@@ -145,7 +144,7 @@ internal class BanManager(Database.Database? database)
         {
             string sql;
             
-            if (CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp && !CS2_SimpleAdmin.Instance.Config.OtherSettings.IgnoredIps.Contains(player.IpAddress))
+            if (CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp && hasIp && !isIpIgnored)
             {
                 sql = CS2_SimpleAdmin.Instance.Config.MultiServerMode ? """
                                                                             SELECT COALESCE((
@@ -231,11 +230,9 @@ internal class BanManager(Database.Database? database)
             var parameters = new
             {
                 PlayerSteamID = player.SteamId.SteamId64.ToString(),
-                PlayerIP = CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType == 0 ||
-                           string.IsNullOrEmpty(player.IpAddress) ||
-                           CS2_SimpleAdmin.Instance.Config.OtherSettings.IgnoredIps.Contains(player.IpAddress)
+                PlayerIP = CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType == 0 || !hasIp || isIpIgnored
                     ? null
-                    : player.IpAddress,
+                    : ipAddress,
                 PlayerName = !string.IsNullOrEmpty(player.Name) ? player.Name : string.Empty,
                 CurrentTime = currentTime,
                 CS2_SimpleAdmin.ServerId
