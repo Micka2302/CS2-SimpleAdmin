@@ -1,4 +1,4 @@
-using CounterStrikeSharp.API;
+﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using CS2_SimpleAdminApi;
 using Dapper;
@@ -250,6 +250,88 @@ internal class BanManager(Database.Database? database)
         return banCount > 0;
     }
 
+    public bool IsSteamIdBanned(string steamId)
+    {
+        if (database == null) return false;
+        if (string.IsNullOrWhiteSpace(steamId)) return false;
+
+        var currentTime = Time.ActualDateTime();
+
+        try
+        {
+            using var connection = database.GetConnection();
+            var sql = CS2_SimpleAdmin.Instance.Config.MultiServerMode ? """
+                SELECT COUNT(*)
+                FROM sa_bans
+                WHERE player_steamid = @PlayerSteamID
+                  AND status = 'ACTIVE'
+                  AND (duration = 0 OR ends > @CurrentTime);
+                """ : """
+                SELECT COUNT(*)
+                FROM sa_bans
+                WHERE player_steamid = @PlayerSteamID
+                  AND status = 'ACTIVE'
+                  AND (duration = 0 OR ends > @CurrentTime)
+                  AND server_id = @serverid;
+                """;
+
+            var count = connection.ExecuteScalar<int>(sql, new
+            {
+                PlayerSteamID = steamId,
+                CurrentTime = currentTime,
+                serverid = CS2_SimpleAdmin.ServerId
+            });
+
+            return count > 0;
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogError("Unable to check SteamID ban for {SteamId} ({ExceptionMessage})", steamId, ex.Message);
+            return true;
+        }
+    }
+
+    public bool IsIpBanned(string ipAddress)
+    {
+        if (database == null) return false;
+        if (string.IsNullOrWhiteSpace(ipAddress)) return false;
+
+        var currentTime = Time.ActualDateTime();
+
+        try
+        {
+            using var connection = database.GetConnection();
+            var sql = CS2_SimpleAdmin.Instance.Config.MultiServerMode ? """
+                SELECT COUNT(*)
+                FROM sa_bans
+                WHERE player_ip = @PlayerIP
+                  AND status = 'ACTIVE'
+                  AND (duration = 0 OR ends > @CurrentTime);
+                """ : """
+                SELECT COUNT(*)
+                FROM sa_bans
+                WHERE player_ip = @PlayerIP
+                  AND status = 'ACTIVE'
+                  AND (duration = 0 OR ends > @CurrentTime)
+                  AND server_id = @serverid;
+                """;
+
+            var count = connection.ExecuteScalar<int>(sql, new
+            {
+                PlayerIP = ipAddress,
+                CurrentTime = currentTime,
+                serverid = CS2_SimpleAdmin.ServerId
+            });
+
+            return count > 0;
+        }
+        catch (Exception ex)
+        {
+            CS2_SimpleAdmin._logger?.LogError("Unable to check IP ban for {IpAddress} ({ExceptionMessage})", ipAddress, ex.Message);
+            return true;
+        }
+    }
+
     public async Task<int> GetPlayerBans(PlayerInfo player)
     {
         if (database == null) return 0;
@@ -493,3 +575,7 @@ internal class BanManager(Database.Database? database)
         }
     }
 }
+
+
+
+

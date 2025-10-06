@@ -335,3 +335,5 @@ internal class MuteManager(Database.Database? database)
         }
     }
 }
+
+

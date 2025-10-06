@@ -8,7 +8,9 @@ using CS2_SimpleAdmin.Managers;
 using CS2_SimpleAdmin.Models;
 using CS2_SimpleAdminApi;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.UserMessages;
@@ -19,6 +21,8 @@ namespace CS2_SimpleAdmin;
 
 public partial class CS2_SimpleAdmin
 {
+    private const int MaxBanConnectAttempts = 10;
+
     private bool _serverLoading;
 
     public List<CCSPlayerController> CachedPlayers = new();
@@ -113,16 +117,8 @@ public partial class CS2_SimpleAdmin
 
         var player = @event.Userid;
 
-#if DEBUG
-        Logger.LogCritical("[OnClientDisconnect] Before");
-#endif
-
         if (player == null || !player.IsValid || player.IsBot)
             return HookResult.Continue;
-
-#if DEBUG
-        Logger.LogCritical("[OnClientDisconnect] After Check");
-#endif
 
         Server.ExecuteCommand($"mm_removeexcludeslot {player.Slot}");
 
@@ -183,42 +179,119 @@ public partial class CS2_SimpleAdmin
     
     private void OnClientConnect(int playerslot, string name, string ipaddress)
     {
-#if DEBUG
-        Logger.LogCritical("[OnClientConnect]");
-#endif
-        if (Config.OtherSettings.BanType == 0)
+        if (Instance.CacheManager == null && Instance.BanManager == null)
             return;
-        
-        if (Instance.CacheManager != null && !Instance.CacheManager.IsPlayerBanned(null, ipaddress.Split(":")[0]))
+
+        var initialIp = ipaddress.Split(':')[0];
+        EnforceBanOnConnect(playerslot, initialIp, 0);
+    }
+
+    private void EnforceBanOnConnect(int playerSlot, string? initialIp, int attempt)
+    {
+        Server.NextWorldUpdate(() =>
+        {
+            var player = Utilities.GetPlayerFromSlot(playerSlot);
+            if (player == null || !player.IsValid || player.IsBot)
+            {
+                if (attempt < MaxBanConnectAttempts)
+                    AddTimer(0.1f, () => EnforceBanOnConnect(playerSlot, initialIp, attempt + 1));
+                else
+                    CS2_SimpleAdmin._logger?.LogWarning("[BanCheck] Unable to resolve player in slot {Slot} after {Attempts} attempts.", playerSlot, attempt);
+                return;
+            }
+
+            var cacheManager = Instance.CacheManager;
+            var banManager = Instance.BanManager;
+
+            if (cacheManager == null && banManager == null)
                 return;
 
-        Server.NextWorldUpdate((() =>
-        {
-            var player = Utilities.GetPlayerFromSlot(playerslot);
-            if (player == null || !player.IsValid || player.IsBot)
+            var steamId = player.SteamID.ToString();
+            var playerIp = player.IpAddress?.Split(':')[0] ?? initialIp;
+            var config = Config.OtherSettings;
+            var ipCheckEnabled = config.BanType != 0 && !string.IsNullOrWhiteSpace(playerIp);
+
+            var steamCached = cacheManager?.IsPlayerBanned(steamId, null) ?? false;
+            var ipCached = ipCheckEnabled && playerIp != null && cacheManager?.IsPlayerBanned(null, playerIp) == true;
+
+            var steamActive = steamCached;
+            var ipActive = ipCached;
+
+            if (banManager != null)
+            {
+                try
+                {
+                    steamActive = banManager.IsSteamIdBanned(steamId);
+                }
+                catch (Exception ex)
+                {
+                    CS2_SimpleAdmin._logger?.LogError("[BanCheck] Unable to validate Steam ban for {SteamId}: {ExceptionMessage}", steamId, ex.Message);
+                    steamActive = steamCached || cacheManager?.IsPlayerBanned(steamId, null) == true;
+                }
+
+                if (ipCheckEnabled && playerIp != null)
+                {
+                    try
+                    {
+                        ipActive = banManager.IsIpBanned(playerIp);
+                    }
+                    catch (Exception ex)
+                    {
+                        CS2_SimpleAdmin._logger?.LogError("[BanCheck] Unable to validate IP ban for {IpAddress}: {ExceptionMessage}", playerIp, ex.Message);
+                        ipActive = ipCached || cacheManager?.IsPlayerBanned(null, playerIp) == true;
+                    }
+                }
+            }
+
+            CS2_SimpleAdmin._logger?.LogInformation(
+                "[BanCheck] Player {PlayerName} ({SteamId}) - Steam banned: {SteamBanned}, IP banned: {IpBanned}, IP: {IpAddress}",
+                player.PlayerName,
+                steamId,
+                steamActive,
+                ipActive,
+                playerIp ?? "Unknown");
+
+            if (!steamActive && !ipActive)
+            {
+                CS2_SimpleAdmin._logger?.LogInformation(
+                    "[BanCheck] Player {PlayerName} ({SteamId}) allowed to join (no active bans).",
+                    player.PlayerName,
+                    steamId);
                 return;
+            }
+
+            if (cacheManager != null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await cacheManager.RefreshCacheAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        CS2_SimpleAdmin._logger?.LogError("[BanCheck] Unable to refresh ban cache for {SteamId}: {ExceptionMessage}", steamId, ex.Message);
+                    }
+                });
+            }
+
+            CS2_SimpleAdmin._logger?.LogInformation(
+                "[BanCheck] Blocking player {PlayerName} ({SteamId}) due to active bans (Steam: {SteamBanned}, IP: {IpBanned}). IP: {IpAddress}",
+                player.PlayerName,
+                steamId,
+                steamActive,
+                ipActive,
+                playerIp ?? "Unknown");
 
             Helper.KickPlayer(player, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED);
-        }));
-
-        // Server.NextFrame(() =>
-        // {
-        //     var player = Utilities.GetPlayerFromSlot(playerslot);
-        //
-        //     if (player == null || !player.IsValid || player.IsBot)
-        //         return;
-        //
-        //     new PlayerManager().LoadPlayerData(player);
-        // });
+        });
     }
+
+
 
     [GameEventHandler]
     public HookResult OnPlayerFullConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
-#if DEBUG
-        Logger.LogCritical("[OnPlayerFullConnect]");
-#endif
-
         var player = @event.Userid;
 
         if (player == null || !player.IsValid || player.IsBot)
@@ -233,13 +306,25 @@ public partial class CS2_SimpleAdmin
             return HookResult.Continue;
         }
 
+        var playerSlot = player.Slot;
+
         AddTimer(0.5f, () =>
         {
-            player.ChangeTeam(CsTeam.Spectator);
+            var hidePlayer = Utilities.GetPlayerFromSlot(playerSlot);
+
+            if (hidePlayer == null || !hidePlayer.IsValid || hidePlayer.IsBot)
+                return;
+
+            hidePlayer.ChangeTeam(CsTeam.Spectator);
         });
         AddTimer(0.65f, () =>
         {
-            player.ExecuteClientCommandFromServer("css_hide");
+            var hidePlayer = Utilities.GetPlayerFromSlot(playerSlot);
+
+            if (hidePlayer == null || !hidePlayer.IsValid || hidePlayer.IsBot)
+                return;
+
+            hidePlayer.ExecuteClientCommandFromServer("css_hide");
         });
 
         return HookResult.Continue;
@@ -248,10 +333,6 @@ public partial class CS2_SimpleAdmin
     [GameEventHandler]
     public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
-#if DEBUG
-        Logger.LogCritical("[OnRoundStart]");
-#endif
-
         GodPlayers.Clear();
         SpeedPlayers.Clear();
         GravityPlayers.Clear();
@@ -599,3 +680,8 @@ public partial class CS2_SimpleAdmin
         return HookResult.Continue;
     }
 }
+
+
+
+
+
