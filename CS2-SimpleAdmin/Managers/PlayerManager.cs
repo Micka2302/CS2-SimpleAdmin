@@ -1,4 +1,4 @@
-using CounterStrikeSharp.API;
+﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Entities;
@@ -44,6 +44,7 @@ public class PlayerManager
         
         var steamId64 = CS2_SimpleAdmin.PlayersInfo[userId].SteamId.SteamId64;
         var steamId = steamId64.ToString();
+        var playerInfo = CS2_SimpleAdmin.PlayersInfo[userId];
         
         if (CS2_SimpleAdmin.Database == null) return;
 
@@ -61,12 +62,30 @@ public class PlayerManager
                     : cacheManager.IsPlayerBanned(steamId, ipAddress)
             };
 
-            if (!isBanned && CS2_SimpleAdmin.Instance.Config.MultiServerMode && banManager != null)
+            if (isBanned && banManager != null)
+            {
+                try
+                {
+                    if (!await banManager.IsPlayerBanned(playerInfo))
+                    {
+                        isBanned = false;
+
+                        if (cacheManager != null)
+                        {
+                            await cacheManager.RefreshCacheAsync();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    CS2_SimpleAdmin._logger?.LogError("Error validating ban status for {PlayerName}: {ExceptionMessage}", player.PlayerName, ex.Message);
+                }
+            }
+            else if (!isBanned && CS2_SimpleAdmin.Instance.Config.MultiServerMode && banManager != null)
             {
                 try
                 {
                     // Fallback to live database check so bans from other servers apply before the cache refreshes.
-                    var playerInfo = CS2_SimpleAdmin.PlayersInfo[userId];
                     isBanned = await banManager.IsPlayerBanned(playerInfo);
 
                     if (isBanned && cacheManager != null)
@@ -82,7 +101,12 @@ public class PlayerManager
 
             if (isBanned)
             {
-                // Kick the player if banned
+                CS2_SimpleAdmin._logger?.LogInformation(
+                    "Blocked banned player {PlayerName} ({SteamId}) from joining. IP: {IpAddress}",
+                    player.PlayerName,
+                    steamId,
+                    ipAddress ?? "Unknown");
+
                 await Server.NextFrameAsync(() =>
                 {
                     if (!player.UserId.HasValue) return;
@@ -287,9 +311,6 @@ public class PlayerManager
         
         CS2_SimpleAdmin.Instance.AddTimer(61.0f, () =>
         {
-#if DEBUG
-            CS2_SimpleAdmin._logger?.LogCritical("[OnMapStart] Expired check");
-#endif
             if (CS2_SimpleAdmin.Database == null)
                 return;
             
@@ -342,8 +363,15 @@ public class PlayerManager
                 
                 foreach (var player in bannedPlayers)
                 {
-                    if (player.UserId.HasValue)
-                        await Server.NextFrameAsync(() => Helper.KickPlayer((int)player.UserId, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED));
+                    if (!player.UserId.HasValue)
+                        continue;
+
+                    CS2_SimpleAdmin._logger?.LogInformation(
+                        "Removed banned player {SteamId} during periodic online check.",
+                        player.SteamID.ToString());
+
+                    await Server.NextFrameAsync(() =>
+                        Helper.KickPlayer((int)player.UserId, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED));
                 }
                 
                 var onlinePlayers = tempPlayers.AsValueEnumerable().Select(player => (player.SteamID, player.UserId, player.Slot)).ToList();
@@ -388,3 +416,6 @@ public class PlayerManager
         }, TimerFlags.REPEAT);
     }
 }
+
+
+
