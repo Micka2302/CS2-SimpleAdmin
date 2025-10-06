@@ -50,13 +50,35 @@ public class PlayerManager
         // Perform asynchronous database operations within a single method
         Task.Run(async () =>
         {
-            var isBanned = CS2_SimpleAdmin.Instance.CacheManager != null && CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType switch
+            var cacheManager = CS2_SimpleAdmin.Instance.CacheManager;
+            var banManager = CS2_SimpleAdmin.Instance.BanManager;
+
+            var isBanned = cacheManager != null && CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType switch
             {
-                0 => CS2_SimpleAdmin.Instance.CacheManager.IsPlayerBanned(steamId, null),
+                0 => cacheManager.IsPlayerBanned(steamId, null),
                 _ => CS2_SimpleAdmin.Instance.Config.OtherSettings.CheckMultiAccountsByIp
-                    ? CS2_SimpleAdmin.Instance.CacheManager.IsPlayerOrAnyIpBanned(steamId64, ipAddress)
-                    : CS2_SimpleAdmin.Instance.CacheManager.IsPlayerBanned(steamId, ipAddress)
+                    ? cacheManager.IsPlayerOrAnyIpBanned(steamId64, ipAddress)
+                    : cacheManager.IsPlayerBanned(steamId, ipAddress)
             };
+
+            if (!isBanned && CS2_SimpleAdmin.Instance.Config.MultiServerMode && banManager != null)
+            {
+                try
+                {
+                    // Fallback to live database check so bans from other servers apply before the cache refreshes.
+                    var playerInfo = CS2_SimpleAdmin.PlayersInfo[userId];
+                    isBanned = await banManager.IsPlayerBanned(playerInfo);
+
+                    if (isBanned && cacheManager != null)
+                    {
+                        await cacheManager.RefreshCacheAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    CS2_SimpleAdmin._logger?.LogError("Error validating ban status for {PlayerName}: {ExceptionMessage}", player.PlayerName, ex.Message);
+                }
+            }
 
             if (isBanned)
             {
