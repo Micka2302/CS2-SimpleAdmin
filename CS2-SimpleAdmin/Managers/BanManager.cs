@@ -1,4 +1,6 @@
 ﻿using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using CS2_SimpleAdminApi;
 using Dapper;
@@ -384,47 +386,81 @@ internal class BanManager(Database.Database? database)
         {
             return;
         }
+        var refreshCache = false;
+
         try
         {
             await using var connection = await database.GetConnectionAsync();
 
             var sqlRetrieveBans = CS2_SimpleAdmin.Instance.Config.MultiServerMode
-                ? "SELECT id FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE'"
-                : "SELECT id FROM sa_bans WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) AND status = 'ACTIVE' AND server_id = @serverid";
+                ? """
+                  SELECT 
+                      id AS Id, 
+                      player_steamid AS PlayerSteamId
+                  FROM sa_bans 
+                  WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) 
+                    AND status = 'ACTIVE'
+                  """
+                : """
+                  SELECT 
+                      id AS Id, 
+                      player_steamid AS PlayerSteamId
+                  FROM sa_bans 
+                  WHERE (player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern) 
+                    AND status = 'ACTIVE' 
+                    AND server_id = @serverid
+                  """;
 
-            var bans = await connection.QueryAsync(sqlRetrieveBans, new { pattern = playerPattern, serverid = CS2_SimpleAdmin.ServerId });
+            var bans = (await connection.QueryAsync<(int Id, string? PlayerSteamId)>(sqlRetrieveBans,
+                new { pattern = playerPattern, serverid = CS2_SimpleAdmin.ServerId })).ToList();
 
-            var bansList = bans as dynamic[] ?? bans.ToArray();
-            if (bansList.Length == 0)
+            if (bans.Count == 0)
                 return;
 
             const string sqlAdmin = "SELECT id FROM sa_admins WHERE player_steamid = @adminSteamId";
-            var sqlInsertUnban = "INSERT INTO sa_unbans (ban_id, admin_id, reason) VALUES (@banId, @adminId, @reason); SELECT LAST_INSERT_ID();";
+            const string sqlInsertUnbanWithReason = "INSERT INTO sa_unbans (ban_id, admin_id, reason) VALUES (@banId, @adminId, @reason); SELECT LAST_INSERT_ID();";
+            const string sqlInsertUnbanWithoutReason = "INSERT INTO sa_unbans (ban_id, admin_id) VALUES (@banId, @adminId); SELECT LAST_INSERT_ID();";
 
             var sqlAdminId = await connection.ExecuteScalarAsync<int?>(sqlAdmin, new { adminSteamId });
             var adminId = sqlAdminId ?? 0;
 
-            foreach (var ban in bansList)
+            foreach (var ban in bans)
             {
-                int banId = ban.id;
+                int banId = ban.Id;
                 int? unbanId;
 
                 if (reason != null)
                 {
-                    unbanId = await connection.ExecuteScalarAsync<int>(sqlInsertUnban, new { banId, adminId, reason });
+                    unbanId = await connection.ExecuteScalarAsync<int>(sqlInsertUnbanWithReason, new { banId, adminId, reason });
                 }
                 else
                 {
-                    sqlInsertUnban = "INSERT INTO sa_unbans (ban_id, admin_id) VALUES (@banId, @adminId); SELECT LAST_INSERT_ID();";
-                    unbanId = await connection.ExecuteScalarAsync<int>(sqlInsertUnban, new { banId, adminId });
+                    unbanId = await connection.ExecuteScalarAsync<int>(sqlInsertUnbanWithoutReason, new { banId, adminId });
                 }
 
                 const string sqlUpdateBan = "UPDATE sa_bans SET status = 'UNBANNED', unban_id = @unbanId WHERE id = @banId";
                 await connection.ExecuteAsync(sqlUpdateBan, new { unbanId, banId });
+                refreshCache = true;
             }
 
         }
         catch { }
+
+        if (refreshCache)
+        {
+            var cacheManager = CS2_SimpleAdmin.Instance?.CacheManager;
+            if (cacheManager != null)
+            {
+                try
+                {
+                    await cacheManager.RefreshCacheAsync();
+                }
+                catch (Exception ex)
+                {
+                    CS2_SimpleAdmin._logger?.LogError("Unable to refresh ban cache after unban: {ExceptionMessage}", ex.Message);
+                }
+            }
+        }
     }
 
     public async Task CheckOnlinePlayers(List<(string? IpAddress, ulong SteamID, int? UserId, int Slot)> players)
