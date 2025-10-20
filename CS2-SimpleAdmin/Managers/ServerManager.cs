@@ -35,21 +35,30 @@ public class ServerManager
         {
             if (CS2_SimpleAdmin.ServerLoaded || CS2_SimpleAdmin.DatabaseProvider == null) return;
 
-            if (_getIpTryCount > 32 && Helper.GetServerIp().StartsWith("0.0.0.0") || string.IsNullOrEmpty(Helper.GetServerIp()))
+            // Optimization: Get server IP once and reuse
+            var serverIp = Helper.GetServerIp();
+            var isInvalidIp = string.IsNullOrEmpty(serverIp) || serverIp.StartsWith("0.0.0");
+
+            // Check if we've exceeded retry limit with invalid IP
+            if (_getIpTryCount > 32 && isInvalidIp)
             {
                 CS2_SimpleAdmin._logger?.LogError("Unable to load server data - can't fetch ip address!");
                 return;
             }
 
-            var ipAddress = ConVar.Find("ip")?.StringValue;
+            // Optimization: Cache ConVar lookups
+            var ipConVar = ConVar.Find("ip");
+            var ipAddress = ipConVar?.StringValue;
+
+            // Use Helper IP if ConVar IP is invalid
             if (string.IsNullOrEmpty(ipAddress) || ipAddress.StartsWith("0.0.0"))
             {
-                ipAddress = Helper.GetServerIp();
+                ipAddress = serverIp;
 
-                if (_getIpTryCount <= 32 && (string.IsNullOrEmpty(ipAddress) || ipAddress.StartsWith("0.0.0")))
+                // Retry if still invalid and under retry limit
+                if (_getIpTryCount <= 32 && isInvalidIp)
                 {
                     _getIpTryCount++;
-
                     LoadServerData();
                     return;
                 }
@@ -120,6 +129,8 @@ public class ServerManager
                     CS2_SimpleAdmin._logger?.LogCritical("Unable to create or get server_id: " + ex.Message);
                 }
             });
+
+            CS2_SimpleAdmin.SimpleAdminApi?.OnSimpleAdminReadyEvent();
         });
     }
 }

@@ -53,7 +53,7 @@ public static class AdminMenu
             }
         }
 
-        if(i == 0) return;
+        if (i == 0) return;
 
         CS2_SimpleAdmin.Menu?.ShowScrollableMenu(admin, localizer?["sa_title"] ?? "SimpleAdmin", items, (buttons, menu, selected) =>
         {

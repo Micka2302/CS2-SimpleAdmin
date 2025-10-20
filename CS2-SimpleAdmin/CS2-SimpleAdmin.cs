@@ -1,4 +1,3 @@
-using System.Reflection;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
@@ -28,7 +27,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
     public override string ModuleName => "CS2-SimpleAdmin" + (Helper.IsDebugBuild ? " (DEBUG)" : " (RELEASE)");
     public override string ModuleDescription => "Simple admin plugin for Counter-Strike 2 :)";
     public override string ModuleAuthor => "daffyy, Dliix66, ShiNxz & Cruze";
-    public override string ModuleVersion => "1.7.8-alpha-10";
+    public override string ModuleVersion => "1.7.8-beta-3";
 
     public override void Load(bool hotReload)
     {
@@ -237,7 +236,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         WarnManager = new WarnManager(DatabaseProvider);
     }
 
-    private static TargetResult? GetTarget(CommandInfo command, int argument = 1)
+    internal static TargetResult? GetTarget(CommandInfo command, int argument = 1)
     {
         var matches = command.GetArgTargetResult(argument);
 

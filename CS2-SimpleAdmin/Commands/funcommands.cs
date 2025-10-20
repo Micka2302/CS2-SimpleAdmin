@@ -32,7 +32,7 @@ public partial class CS2_SimpleAdmin
                 NoClip(caller, player, callerName);
             }
         });
-        
+
         Helper.LogCommand(caller, command);
     }
 
@@ -69,7 +69,7 @@ public partial class CS2_SimpleAdmin
         if (command == null)
             Helper.LogCommand(caller, $"css_noclip {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)}");
     }
-    
+
     /// <summary>
     /// Enables or disables god mode for specified player(s).
     /// </summary>
@@ -84,7 +84,7 @@ public partial class CS2_SimpleAdmin
         var targets = GetTarget(command);
         if (targets == null) return;
 
-        var playersToTarget = targets.Players.Where(player => player.IsValid && player is {IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
+        var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
         playersToTarget.ForEach(player =>
         {
@@ -96,7 +96,7 @@ public partial class CS2_SimpleAdmin
                 God(caller, player, command);
             }
         });
-        
+
         Helper.LogCommand(caller, command);
     }
 
@@ -158,10 +158,10 @@ public partial class CS2_SimpleAdmin
                 Freeze(caller, player, time, callerName, command);
             }
         });
-        
+
         Helper.LogCommand(caller, command);
     }
-    
+
     /// <summary>
     /// Resizes the target player(s) models to a specified scale.
     /// </summary>
@@ -181,18 +181,18 @@ public partial class CS2_SimpleAdmin
         playersToTarget.ForEach(player =>
         {
             if (!caller!.CanTarget(player)) return;
-            
+
             var sceneNode = player.PlayerPawn.Value!.CBodyComponent?.SceneNode;
             if (sceneNode == null) return;
-            
+
             sceneNode.GetSkeletonInstance().Scale = size;
             player.PlayerPawn.Value.AcceptInput("SetScale", null, null, size.ToString(CultureInfo.InvariantCulture));
-            
+
             Server.NextWorldUpdate(() =>
             {
                 Utilities.SetStateChanged(player.PlayerPawn.Value, "CBaseEntity", "m_CBodyComponent");
             });
-            
+
             var (activityMessageKey, adminActivityArgs) =
                 ("sa_admin_resize_message",
                     new object[] { "CALLER", player.PlayerName });
@@ -203,7 +203,7 @@ public partial class CS2_SimpleAdmin
                 Helper.ShowAdminActivity(activityMessageKey, callerName, false, adminActivityArgs);
             }
         });
-        
+
         Helper.LogCommand(caller, command);
     }
 
@@ -267,7 +267,7 @@ public partial class CS2_SimpleAdmin
         {
             Unfreeze(caller, player, callerName, command);
         });
-        
+
         Helper.LogCommand(caller, command);
     }
 

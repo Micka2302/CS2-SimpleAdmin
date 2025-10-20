@@ -547,14 +547,13 @@ public partial class CS2_SimpleAdmin
     {
         var player = @event.Userid;
 
-        if (player?.UserId == null || !player.IsValid || player.IsHLTV || player.Connected != PlayerConnectedState.PlayerConnected)
+        if (player?.UserId == null || !player.IsValid || player.IsHLTV ||
+            player.Connected != PlayerConnectedState.PlayerConnected || !PlayersInfo.ContainsKey(player.SteamID) ||
+            @event.Attacker == null)
             return HookResult.Continue;
 
         SpeedPlayers.Remove(player.Slot);
         GravityPlayers.Remove(player.Slot);
-
-        if (!PlayersInfo.ContainsKey(player.SteamID) || @event.Attacker == null)
-            return HookResult.Continue;
 
         var playerPosition = player.PlayerPawn.Value?.AbsOrigin?.ToVector_t();
         var playerRotation = player.PlayerPawn.Value?.AbsRotation?.ToQAngle_t();

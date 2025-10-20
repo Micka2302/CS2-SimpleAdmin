@@ -34,7 +34,7 @@ public partial class CS2_SimpleAdmin
     [CommandHelper(usage: "[#userid or name]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnPenaltiesCommand(CCSPlayerController? caller, CommandInfo command)
     {
-        if (caller == null || caller.IsValid == false || !caller.UserId.HasValue || DatabaseProvider == null)
+        if (caller == null || !caller.IsValid || !caller.UserId.HasValue || DatabaseProvider == null)
             return;
 
         var userId = caller.UserId.Value;
@@ -162,7 +162,7 @@ public partial class CS2_SimpleAdmin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnAdminVoiceCommand(CCSPlayerController? caller, CommandInfo command)
     {
-        if (caller == null || caller.IsValid == false)
+        if (caller == null || !caller.IsValid)
             return;
 
         if (command.ArgCount > 1)
@@ -210,7 +210,7 @@ public partial class CS2_SimpleAdmin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnAdminCommand(CCSPlayerController? caller, CommandInfo command)
     {
-        if (caller == null || caller.IsValid == false)
+        if (caller == null || !caller.IsValid)
             return;
 
         AdminMenu.OpenMenu(caller);
@@ -554,20 +554,13 @@ public partial class CS2_SimpleAdmin
         }
         else
         {
-            Server.ExecuteCommand("sv_disable_teamselect_menu 1");
-
             if (caller.PlayerPawn?.Value?.LifeState == (int)LifeState_t.LIFE_ALIVE)
                 caller.PlayerPawn.Value?.CommitSuicide(true, false);
 
-            AddTimer(1.0f, () => { Server.NextWorldUpdateAsync(() => caller.ChangeTeam(CsTeam.Spectator)); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-            AddTimer(1.4f, () => { Server.NextWorldUpdateAsync(() => caller.ChangeTeam(CsTeam.None)); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-            caller.PrintToChat($"You are hidden now!");
-            if (caller.TeamNum > 1)
-                AddTimer(0.15f, () => { Server.NextWorldUpdate(() => caller.ChangeTeam(CsTeam.Spectator)); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-            AddTimer(0.26f, () => { Server.NextWorldUpdate(() => caller.ChangeTeam(CsTeam.None)); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-            AddTimer(0.50f, () => { Server.NextWorldUpdate(() => Server.ExecuteCommand("sv_disable_teamselect_menu 0")); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-            SimpleAdminApi?.OnAdminToggleSilentEvent(caller.Slot, true);
-            AddTimer(2.0f, () => { Server.NextWorldUpdateAsync(() => Server.ExecuteCommand("sv_disable_teamselect_menu 0")); }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
+            Server.ExecuteCommand("sv_disable_teamselect_menu 1");
+
+            caller.ChangeTeam(CsTeam.None);
+            AddTimer(0.2f, () => { Server.ExecuteCommand("sv_disable_teamselect_menu 0"); });
         }
     }
 
