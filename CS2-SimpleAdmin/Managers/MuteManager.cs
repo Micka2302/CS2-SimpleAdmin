@@ -85,7 +85,7 @@ internal class MuteManager(IDatabaseProvider? databaseProvider)
         {
             await using var connection = await databaseProvider.CreateConnectionAsync();
             var sql = databaseProvider.GetAddMuteQuery(false);
-            
+
             var muteId = await connection.ExecuteScalarAsync<int?>(sql, new
             {
                 playerSteamid = playerSteamId,
@@ -130,9 +130,9 @@ internal class MuteManager(IDatabaseProvider? databaseProvider)
         {
             await using var connection = await databaseProvider.CreateConnectionAsync();
             var currentTime = Time.ActualDateTime();
-            
+
             var sql = databaseProvider.GetIsMutedQuery(CS2_SimpleAdmin.Instance.Config.MultiServerMode, CS2_SimpleAdmin.Instance.Config.OtherSettings.TimeMode);
-            
+
             var parameters = new { PlayerSteamID = steamId, CurrentTime = currentTime, serverid = CS2_SimpleAdmin.ServerId };
             var activeMutes = (await connection.QueryAsync(sql, parameters)).ToList();
             return activeMutes;
@@ -153,13 +153,13 @@ internal class MuteManager(IDatabaseProvider? databaseProvider)
     /// </returns>
     public async Task<(int TotalMutes, int TotalGags, int TotalSilences)> GetPlayerMutes(PlayerInfo playerInfo)
     {
-        if (databaseProvider == null) return (0,0,0);
+        if (databaseProvider == null) return (0, 0, 0);
 
         try
         {
             await using var connection = await databaseProvider.CreateConnectionAsync();
 
-            var sql = databaseProvider.GetRetrieveMutesQuery(CS2_SimpleAdmin.Instance.Config.MultiServerMode);
+            var sql = databaseProvider.GetMuteStatsQuery(CS2_SimpleAdmin.Instance.Config.MultiServerMode);
             var result = await connection.QuerySingleAsync<(int TotalMutes, int TotalGags, int TotalSilences)>(sql, new
             {
                 PlayerSteamID = playerInfo.SteamId.SteamId64,
@@ -173,7 +173,7 @@ internal class MuteManager(IDatabaseProvider? databaseProvider)
             return (0, 0, 0);
         }
     }
-    
+
     /// <summary>
     /// Processes a batch of online players to update their mute status and remove expired penalties.
     /// </summary>

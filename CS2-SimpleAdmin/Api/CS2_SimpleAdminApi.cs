@@ -56,35 +56,35 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
         switch (penaltyType)
         {
             case PenaltyType.Ban:
-            {
-                CS2_SimpleAdmin.Instance.Ban(admin, player, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.Ban(admin, player, duration, reason);
+                    break;
+                }
             case PenaltyType.Kick:
-            {
-                CS2_SimpleAdmin.Instance.Kick(admin, player, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.Kick(admin, player, reason);
+                    break;
+                }
             case PenaltyType.Gag:
-            {
-                CS2_SimpleAdmin.Instance.Gag(admin, player, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.Gag(admin, player, duration, reason);
+                    break;
+                }
             case PenaltyType.Mute:
-            {
-                CS2_SimpleAdmin.Instance.Mute(admin, player, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.Mute(admin, player, duration, reason);
+                    break;
+                }
             case PenaltyType.Silence:
-            {
-                CS2_SimpleAdmin.Instance.Silence(admin, player, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.Silence(admin, player, duration, reason);
+                    break;
+                }
             case PenaltyType.Warn:
-            {
-                CS2_SimpleAdmin.Instance.Warn(admin, player, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.Warn(admin, player, duration, reason);
+                    break;
+                }
             default:
                 throw new ArgumentOutOfRangeException(nameof(penaltyType), penaltyType, null);
         }
@@ -96,30 +96,30 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
         switch (penaltyType)
         {
             case PenaltyType.Ban:
-            {
-                CS2_SimpleAdmin.Instance.AddBan(admin, steamid, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.AddBan(admin, steamid, duration, reason);
+                    break;
+                }
             case PenaltyType.Gag:
-            {
-                CS2_SimpleAdmin.Instance.AddGag(admin, steamid, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.AddGag(admin, steamid, duration, reason);
+                    break;
+                }
             case PenaltyType.Mute:
-            {
-                CS2_SimpleAdmin.Instance.AddMute(admin, steamid, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.AddMute(admin, steamid, duration, reason);
+                    break;
+                }
             case PenaltyType.Silence:
-            {
-                CS2_SimpleAdmin.Instance.AddSilence(admin, steamid, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.AddSilence(admin, steamid, duration, reason);
+                    break;
+                }
             case PenaltyType.Warn:
-            {
-                CS2_SimpleAdmin.Instance.AddWarn(admin, steamid, duration, reason);
-                break;
-            }
+                {
+                    CS2_SimpleAdmin.Instance.AddWarn(admin, steamid, duration, reason);
+                    break;
+                }
             default:
                 throw new ArgumentOutOfRangeException(nameof(penaltyType), penaltyType, null);
         }
@@ -158,7 +158,7 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
             list = new List<CommandDefinition>();
             RegisterCommands._commandDefinitions[name] = list;
         }
-        
+
         list.Add(definition);
     }
 
@@ -200,159 +200,8 @@ public class CS2_SimpleAdminApi : ICS2_SimpleAdminApi
         Helper.ShowAdminActivityLocalized(localizer, messageKey, callerName, dontPublish, messageArgs);
     }
 
-    public void RegisterMenuCategory(string categoryId, string categoryName, string permission = "@css/generic")
-    {
-        Menus.MenuManager.Instance.RegisterCategory(categoryId, categoryName, permission);
-    }
-
-    public void RegisterMenu(string categoryId, string menuId, string menuName,
-        Func<CCSPlayerController, object> menuFactory, string? permission = null, string? commandName = null)
-    {
-        Menus.MenuManager.Instance.RegisterMenu(categoryId, menuId, menuName, BuilderFactory, permission, commandName);
-        return;
-
-        MenuBuilder BuilderFactory(CCSPlayerController player)
-        {
-            if (menuFactory(player) is not MenuBuilder menuBuilder)
-                throw new InvalidOperationException("Menu factory must return MenuBuilder");
-
-            // Dodaj automatyczną obsługę przycisku 'Wróć'
-            menuBuilder.WithBackAction(p =>
-            {
-                if (Menus.MenuManager.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
-                {
-                    Menus.MenuManager.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
-                }
-                else
-                {
-                    Menus.MenuManager.Instance.OpenMainMenu(p);
-                }
-            });
-
-            return menuBuilder;
-        }
-    }
-
-    public void RegisterMenu(string categoryId, string menuId, string menuName,
-        Func<CCSPlayerController, MenuContext, object> menuFactory, string? permission = null, string? commandName = null)
-    {
-        Menus.MenuManager.Instance.RegisterMenu(categoryId, menuId, menuName, BuilderFactory, permission, commandName);
-        return;
-
-        MenuBuilder BuilderFactory(CCSPlayerController player)
-        {
-            var context = new MenuContext(categoryId, menuId, menuName, permission, commandName);
-
-            if (menuFactory(player, context) is not MenuBuilder menuBuilder)
-                throw new InvalidOperationException("Menu factory must return MenuBuilder");
-
-            // Dodaj automatyczną obsługę przycisku 'Wróć'
-            menuBuilder.WithBackAction(p =>
-            {
-                if (Menus.MenuManager.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
-                {
-                    Menus.MenuManager.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
-                }
-                else
-                {
-                    Menus.MenuManager.Instance.OpenMainMenu(p);
-                }
-            });
-
-            return menuBuilder;
-        }
-    }
-
-
-    public void UnregisterMenu(string categoryId, string menuId)
-    {
-        Menus.MenuManager.Instance.UnregisterMenu(categoryId, menuId);
-    }
-
-    public object CreateMenuWithBack(string title, string categoryId, CCSPlayerController player)
-    {
-        var builder = new MenuBuilder(title);
-        builder.WithBackAction(p =>
-        {
-            if (Menus.MenuManager.Instance.GetMenuCategories().TryGetValue(categoryId, out var category))
-            {
-                Menus.MenuManager.Instance.CreateCategoryMenuPublic(category, p).OpenMenu(p);
-            }
-            else
-            {
-                Menus.MenuManager.Instance.OpenMainMenu(p);
-            }
-        });
-
-        return builder;
-    }
-
-    public object CreateMenuWithBack(MenuContext context, CCSPlayerController player)
-    {
-        return CreateMenuWithBack(context.MenuTitle, context.CategoryId, player);
-    }
-
     public List<CCSPlayerController> GetValidPlayers()
     {
         return Helper.GetValidPlayers();
-    }
-
-    public object CreateMenuWithPlayers(string title, string categoryId, CCSPlayerController admin,
-        Func<CCSPlayerController, bool> filter, Action<CCSPlayerController, CCSPlayerController> onSelect)
-    {
-        var menu = (MenuBuilder)CreateMenuWithBack(title, categoryId, admin);
-        var players = Helper.GetValidPlayers().Where(filter);
-
-        foreach (var player in players)
-        {
-            var playerName = player.PlayerName.Length > 26 ? player.PlayerName[..26] : player.PlayerName;
-            menu.AddOption(playerName, _ =>
-            {
-                if (player.IsValid)
-                {
-                    onSelect(admin, player);
-                }
-            });
-        }
-
-        return menu;
-    }
-
-    public object CreateMenuWithPlayers(MenuContext context, CCSPlayerController admin,
-        Func<CCSPlayerController, bool> filter, Action<CCSPlayerController, CCSPlayerController> onSelect)
-    {
-        return CreateMenuWithPlayers(context.MenuTitle, context.CategoryId, admin, filter, onSelect);
-    }
-
-    public void AddMenuOption(object menu, string name, Action<CCSPlayerController> action, bool disabled = false,
-        string? permission = null)
-    {
-        if (menu is not MenuBuilder menuBuilder)
-            throw new InvalidOperationException("Menu must be a MenuBuilder instance");
-
-        menuBuilder.AddOption(name, action, disabled, permission);
-    }
-
-    public void AddSubMenu(object menu, string name, Func<CCSPlayerController, object> subMenuFactory,
-        bool disabled = false, string? permission = null)
-    {
-        if (menu is not MenuBuilder menuBuilder)
-            throw new InvalidOperationException("Menu must be a MenuBuilder instance");
-
-        menuBuilder.AddSubMenu(name, player =>
-        {
-            var subMenu = subMenuFactory(player);
-            if (subMenu is not MenuBuilder builder)
-                throw new InvalidOperationException("SubMenu factory must return MenuBuilder");
-            return builder;
-        }, disabled, permission);
-    }
-
-    public void OpenMenu(object menu, CCSPlayerController player)
-    {
-        if (menu is not MenuBuilder menuBuilder)
-            throw new InvalidOperationException("Menu must be a MenuBuilder instance");
-
-        menuBuilder.OpenMenu(player);
     }
 }

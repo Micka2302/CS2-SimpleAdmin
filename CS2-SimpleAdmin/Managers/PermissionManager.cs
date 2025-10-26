@@ -10,14 +10,120 @@ using CS2_SimpleAdmin.Database;
 
 namespace CS2_SimpleAdmin.Managers;
 
-public class PermissionManager(IDatabaseProvider? databaseProvider)
+public class PermissionManager(IDatabaseProvider? databaseProvider, CS2_SimpleAdminConfig? config)
 {
-    // Unused for now
-    //public static readonly ConcurrentDictionary<string, ConcurrentBag<string>> _adminCache = new ConcurrentDictionary<string, ConcurrentBag<string>>();
-    // public static readonly ConcurrentDictionary<SteamID, DateTime?> AdminCache = new();
-    public static readonly ConcurrentDictionary<SteamID, (DateTime? ExpirationTime, List<string> Flags)> AdminCache = new();
+	// Unused for now
+	//public static readonly ConcurrentDictionary<string, ConcurrentBag<string>> _adminCache = new ConcurrentDictionary<string, ConcurrentBag<string>>();
+	// public static readonly ConcurrentDictionary<SteamID, DateTime?> AdminCache = new();
+	public static readonly ConcurrentDictionary<SteamID, (DateTime? ExpirationTime, List<string> Flags)> AdminCache = new();
 
-    /*
+	public async Task<List<string>> GetAdminFlagsAsString(string steamId)
+	{
+		if (databaseProvider == null) return [];
+
+		DateTime now = DateTime.UtcNow.ToLocalTime();
+
+		await using var connection = await databaseProvider.CreateConnectionAsync();
+
+		// string sql = "SELECT flags, immunity, ends FROM sa_admins WHERE player_steamid = @PlayerSteamID AND (ends IS NULL OR ends > @CurrentTime) AND (server_id IS NULL OR FIND_IN_SET(@serverid, server_id) > 0)";
+		// string sql = "SELECT player_steamid, flags, immunity, ends FROM sa_admins WHERE (ends IS NULL OR ends > @CurrentTime) AND (server_id IS NULL OR FIND_IN_SET(@serverid, server_id) > 0)";
+		List<string> serverGroups = await GetServerGroups();
+		string serverGroupsCondition = string.Join(" OR ", serverGroups.Select(g => $"FIND_IN_SET({g}, servers_groups) > 0"));
+
+		string GroupCheck = serverGroups.Count > 0 ? $"AND (((server_id IS NULL AND servers_groups IS NULL) OR FIND_IN_SET(@serverid, server_id) > 0) OR (servers_groups IS NULL OR {serverGroupsCondition}))" : "AND ((server_id IS NULL AND servers_groups IS NULL) OR FIND_IN_SET(@serverid, server_id) > 0)";
+		string sql = $"SELECT flags, immunity, ends FROM sa_admins WHERE player_steamid = @PlayerSteamID AND (ends IS NULL OR ends > @CurrentTime) {GroupCheck}";
+
+		List<dynamic>? activeFlags = (await connection.QueryAsync(sql, new { PlayerSteamID = steamId, CurrentTime = now, serverid = CS2_SimpleAdmin.ServerId }))?.ToList();
+
+		if (activeFlags == null)
+		{
+			return new List<string>();
+		}
+
+		List<string> flagsList = new List<string>();
+
+		foreach (dynamic flags in activeFlags)
+		{
+			if (flags is not IDictionary<string, object> flagsDict)
+			{
+				continue;
+			}
+
+			if (!flagsDict.TryGetValue("flags", out var flagsValueObj))
+			{
+				continue;
+			}
+
+			if (!(flagsValueObj is string flagsValue))
+			{
+				continue;
+			}
+
+			// If flags start with '#', fetch flags from sa_admins_groups
+			if (flagsValue.StartsWith("#"))
+			{
+				string groupSql = "SELECT flags FROM sa_admins_groups WHERE id = @GroupId";
+				var group = await connection.QueryFirstOrDefaultAsync(groupSql, new { GroupId = flagsValue });
+
+				if (group != null)
+				{
+					flagsValue = group.flags;
+				}
+			}
+
+			flagsList.AddRange(flagsValue.Split(','));
+		}
+
+		return flagsList;
+	}
+
+	public async Task<List<string>> GetServerGroups()
+	{
+		if (databaseProvider == null) return [];
+
+		await using var connection = await databaseProvider.CreateConnectionAsync();
+
+		string sql = "SELECT id FROM sa_servers_groups WHERE FIND_IN_SET(@ServerId, servers)";
+		List<dynamic>? serverGroups = (await connection.QueryAsync(sql, new { ServerId = CS2_SimpleAdmin.ServerId }))?.ToList();
+
+		if (serverGroups == null)
+		{
+			return new List<string>();
+		}
+
+		List<string> serverGroupsList = new List<string>();
+
+		foreach (dynamic serverGroup in serverGroups)
+		{
+			if (serverGroup is not IDictionary<string, object> serverGroupDict)
+			{
+				Console.WriteLine("[GetServerGroups] Failed to parse server group.");
+				continue;
+			}
+
+			if (!serverGroupDict.TryGetValue("id", out var idObj))
+			{
+				Console.WriteLine("[GetServerGroups] Failed to get server group id.");
+				continue;
+			}
+
+			if (idObj is not string id)
+			{
+				// Convert to string and add it to the list
+				// Console.WriteLine("[GetServerGroups] Failed to parse server group id.");
+				serverGroupsList.Add(idObj.ToString()!);
+
+				continue;
+			}
+
+			serverGroupsList.Add(id);
+		}
+
+		Console.WriteLine($"[GetServerGroups] Server Groups List: {string.Join(", ", serverGroupsList)}");
+		return serverGroupsList;
+	}
+
+	/*
 	public async Task<List<(List<string>, int)>> GetAdminFlags(string steamId)
 	{
 		DateTime now = Time.ActualDateTime();
@@ -60,66 +166,76 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 	}
 	*/
 
-    /// <summary>
-    /// Retrieves all players' flags and associated data asynchronously.
-    /// </summary>
-    /// <returns>A list of tuples containing player SteamID, name, flags, immunity, and expiration time.</returns>
-    private async Task<List<(ulong, string ,List<string>, int, DateTime?)>> GetAllPlayersFlags()
-    {
-	    if (databaseProvider == null)
-		    return new List<(ulong, string, List<string>, int, DateTime?)>();
+	/// <summary>
+	/// Retrieves all players' flags and associated data asynchronously.
+	/// </summary>
+	/// <returns>A list of tuples containing player SteamID, name, flags, immunity, and expiration time.</returns>
+	private async Task<List<(ulong, string, List<string>, int, DateTime?)>> GetAllPlayersFlags()
+	{
+		if (databaseProvider == null)
+			return new List<(ulong, string, List<string>, int, DateTime?)>();
 
-	    var now = Time.ActualDateTime();
+		var now = Time.ActualDateTime();
 
-	    try
-	    {
-		    await using var connection = await databaseProvider.CreateConnectionAsync();
-		    var sql = databaseProvider.GetAdminsQuery();
-		    var admins = (await connection.QueryAsync(sql, new { CurrentTime = now, serverid = CS2_SimpleAdmin.ServerId })).ToList();
+		try
+		{
+			await using var connection = await databaseProvider.CreateConnectionAsync();
+			string sql;
 
-		    var groupedPlayers = admins
-			    .GroupBy(r => new { playerSteamId = r.player_steamid, playerName = r.player_name, r.immunity, r.ends })
-			    .Select(g =>
-			    {
-				    ulong steamId = g.Key.playerSteamId switch
-				    {
-					    long l => (ulong)l,
-					    int i => (ulong)i,
-					    string s when ulong.TryParse(s, out var parsed) => parsed,
-					    _ => 0UL
-				    };
+			if (config?.IsCSSPanel == true)
+			{
+				sql = databaseProvider.GetAdminsQuery_CSS();
+			}
+			else
+			{
+				sql = databaseProvider.GetAdminsQuery();
+			}
 
-				    int immunity = g.Key.immunity switch
-				    {
-					    int i => i,
-					    string s when int.TryParse(s, out var parsed) => parsed,
-					    _ => 0
-				    };
+			var admins = (await connection.QueryAsync(sql, new { CurrentTime = now, serverid = CS2_SimpleAdmin.ServerId })).ToList();
 
-				    DateTime? ends = g.Key.ends as DateTime?;
+			var groupedPlayers = admins
+				.GroupBy(r => new { playerSteamId = r.player_steamid, playerName = r.player_name, r.immunity, r.ends })
+				.Select(g =>
+				{
+					ulong steamId = g.Key.playerSteamId switch
+					{
+						long l => (ulong)l,
+						int i => (ulong)i,
+						string s when ulong.TryParse(s, out var parsed) => parsed,
+						_ => 0UL
+					};
 
-				    string playerName = g.Key.playerName as string ?? string.Empty;
+					int immunity = g.Key.immunity switch
+					{
+						int i => i,
+						string s when int.TryParse(s, out var parsed) => parsed,
+						_ => 0
+					};
 
-				    // tutaj zakładamy, że Dapper zwraca już string (nie dynamic)
-				    var flags = g.Select(r => r.flag as string ?? string.Empty)
-					    .Distinct()
-					    .ToList();
+					DateTime? ends = g.Key.ends as DateTime?;
 
-				    return (steamId, playerName, flags, immunity, ends);
-			    })
-			    .ToList();
+					string playerName = g.Key.playerName as string ?? string.Empty;
 
-		    return groupedPlayers;
-	    }
-	    catch (Exception ex)
-	    {
-		    CS2_SimpleAdmin._logger?.LogError("Unable to load admins from database! {exception}", ex.Message);
-		    return [];
-	    }
-    }
+					// tutaj zakładamy, że Dapper zwraca już string (nie dynamic)
+					var flags = g.Select(r => r.flag as string ?? string.Empty)
+						.Distinct()
+						.ToList();
+
+					return (steamId, playerName, flags, immunity, ends);
+				})
+				.ToList();
+
+			return groupedPlayers;
+		}
+		catch (Exception ex)
+		{
+			CS2_SimpleAdmin._logger?.LogError("Unable to load admins from database! {exception}", ex.Message);
+			return [];
+		}
+	}
 
 
-    /*
+	/*
 	public async Task<Dictionary<int, Tuple<List<string>, List<Tuple<string, DateTime?>>, int>>> GetAllGroupsFlags()
 	{
 		try
@@ -184,88 +300,107 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 	}
 	*/
 
-    /// <summary>
-    /// Retrieves all groups' data including flags and immunity asynchronously.
-    /// </summary>
-    /// <returns>A dictionary with group names as keys and tuples of flags and immunity as values.</returns>
-    private async Task<Dictionary<string, (List<string>, int)>> GetAllGroupsData()
-    {
-	    if (databaseProvider == null) return [];
+	/// <summary>
+	/// Retrieves all groups' data including flags and immunity asynchronously.
+	/// </summary>
+	/// <returns>A dictionary with group names as keys and tuples of flags and immunity as values.</returns>
+	private async Task<Dictionary<string, (List<string>, int)>> GetAllGroupsData()
+	{
+		if (databaseProvider == null) return [];
 
-	    await using var connection = await databaseProvider.CreateConnectionAsync();
-	    ;
-        try
-        {
-            // var sql = "SELECT group_id FROM sa_groups_servers WHERE (server_id = @serverid OR server_id IS NULL)";
-            // var groupDataSql = connection.Query<int>(sql, new { serverid = CS2_SimpleAdmin.ServerId }).ToList();
+		await using var connection = await databaseProvider.CreateConnectionAsync();
+		;
+		try
+		{
+			// var sql = "SELECT group_id FROM sa_groups_servers WHERE (server_id = @serverid OR server_id IS NULL)";
+			// var groupDataSql = connection.Query<int>(sql, new { serverid = CS2_SimpleAdmin.ServerId }).ToList();
 
-            var sql = databaseProvider.GetGroupsQuery();
-            var groupData = connection.Query(sql, new { serverid = CS2_SimpleAdmin.ServerId }).ToList();
-            if (groupData.Count == 0)
-            {
-                return [];
-            }
+			string sql;
 
-            var groupInfoDictionary = new Dictionary<string, (List<string>, int)>();
-            foreach (var row in groupData)
-            {
-                var groupName = (string)row.group_name;
-                var flag = (string)row.flag;
-                var immunity = (int)row.immunity;
+			if (config?.IsCSSPanel == true)
+			{
+				sql = databaseProvider.GetGroupsQuery_CSS();
+			}
+			else
+			{
+				sql = databaseProvider.GetGroupsQuery();
+			}
+			var groupData = connection.Query(sql, new { serverid = CS2_SimpleAdmin.ServerId }).ToList();
+			if (groupData.Count == 0)
+			{
+				return [];
+			}
 
-                // Check if the group name already exists in the dictionary
-                if (!groupInfoDictionary.TryGetValue(groupName, out (List<string>, int) value))
-                {
-                    value = ([], immunity);
-                    // If it doesn't exist, add a new entry with an empty list of flags and immunity
-                    groupInfoDictionary[groupName] = value;
-                }
+			var groupInfoDictionary = new Dictionary<string, (List<string>, int)>();
+			foreach (var row in groupData)
+			{
+				var groupName = (string)row.group_name;
+				var flags = (string)row.flags;
+				var immunity = (string)row.immunity;
 
-                value.Item1.Add(flag);
-            }
+				// Check if the group name already exists in the dictionary
+				if (!groupInfoDictionary.TryGetValue(groupName, out (List<string>, int) value))
+				{
+					value = ([], int.Parse(immunity));
+					// If it doesn't exist, add a new entry with an empty list of flags and immunity
+					groupInfoDictionary[groupName] = value;
+				}
 
-            return groupInfoDictionary;
-        }
-        catch (Exception ex)
-        {
-            CS2_SimpleAdmin._logger?.LogError("Unable to load groups from database! {exception}", ex.Message);
-        }
+				if (flags.Contains(","))
+				{
+					foreach (var flag in flags.Split(',').ToList())
+					{
+						value.Item1.Add(flag);
+					}
+				}
+				else
+				{
+					value.Item1.Add(flags);
+				}
+			}
 
-        return [];
-    }
+			return groupInfoDictionary;
+		}
+		catch (Exception ex)
+		{
+			CS2_SimpleAdmin._logger?.LogError("Unable to load groups from database! {exception}", ex.Message);
+		}
 
-    /// <summary>
-    /// Creates a JSON file containing groups data asynchronously.
-    /// </summary>
-    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
-    public async Task CrateGroupsJsonFile()
-    {
-        var groupsData = await GetAllGroupsData();
-        var jsonData = new Dictionary<string, object>();
+		return [];
+	}
 
-        foreach (var kvp in groupsData)
-        {
-            var groupData = new Dictionary<string, object>
-            {
-                ["flags"] = kvp.Value.Item1,
-                ["immunity"] = kvp.Value.Item2
-            };
+	/// <summary>
+	/// Creates a JSON file containing groups data asynchronously.
+	/// </summary>
+	[UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
+	public async Task CreateGroupsJsonFile()
+	{
+		var groupsData = await GetAllGroupsData();
+		var jsonData = new Dictionary<string, object>();
 
-            jsonData[kvp.Key] = groupData;
-        }
+		foreach (var kvp in groupsData)
+		{
+			var groupData = new Dictionary<string, object>
+			{
+				["flags"] = kvp.Value.Item1,
+				["immunity"] = kvp.Value.Item2
+			};
 
-        var options = new JsonSerializerOptions
-        {
-	        WriteIndented = true,
-	        PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
-        };
+			jsonData[kvp.Key] = groupData;
+		}
 
-        var json = JsonSerializer.Serialize(jsonData, options);
-        var filePath = Path.Combine(CS2_SimpleAdmin.Instance.ModuleDirectory, "data", "groups.json");
-        await File.WriteAllTextAsync(filePath, json);
-    }
+		var options = new JsonSerializerOptions
+		{
+			WriteIndented = true,
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+		};
 
-    /*
+		var json = JsonSerializer.Serialize(jsonData, options);
+		var filePath = Path.Combine(CS2_SimpleAdmin.Instance.ModuleDirectory, "data", "groups.json");
+		await File.WriteAllTextAsync(filePath, json);
+	}
+
+	/*
 	public async Task GiveAllGroupsFlags()
 	{
 		Dictionary<int, Tuple<List<string>, List<Tuple<string, DateTime?>>, int>> groupFlags = await GetAllGroupsFlags();
@@ -296,7 +431,7 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 		}
 	}
 	*/
-    /*
+	/*
 	public async Task GiveAllFlags()
 	{
 		List<(string, string, List<string>, int, DateTime?)> allPlayers = await GetAllPlayersFlags();
@@ -325,21 +460,21 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 	}
 	*/
 
-    /// <summary>
-    /// Creates a JSON file containing admins data asynchronously.
-    /// </summary>
-    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
-    public async Task CreateAdminsJsonFile()
-    {
-        List<(ulong identity, string name, List<string> flags, int immunity, DateTime? ends)> allPlayers = await GetAllPlayersFlags();
-        var validPlayers = allPlayers
-            .Where(player => SteamID.TryParse(player.identity.ToString(), out _))
-            .ToList();
+	/// <summary>
+	/// Creates a JSON file containing admins data asynchronously.
+	/// </summary>
+	[UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
+	public async Task CreateAdminsJsonFile()
+	{
+		List<(ulong identity, string name, List<string> flags, int immunity, DateTime? ends)> allPlayers = await GetAllPlayersFlags();
+		var validPlayers = allPlayers
+			.Where(player => SteamID.TryParse(player.identity.ToString(), out _))
+			.ToList();
 
 		// foreach (var player in allPlayers)
 		// {
 		// 	var (steamId, name, flags, immunity, ends) = player;
-		//           
+		//
 		// 	Console.WriteLine($"Player SteamID: {steamId}");
 		// 	Console.WriteLine($"Player Name: {name}");
 		// 	Console.WriteLine($"Flags: {string.Join(", ", flags)}");
@@ -365,6 +500,11 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 						},
 						(acc, player) =>
 						{
+							// Split entries that contain commas
+							var splitFlags = player.flags
+								.SelectMany(f => f.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+								.ToList();
+
 							// Merge identities
 							if (string.IsNullOrEmpty(acc.identity) && !string.IsNullOrEmpty(player.identity.ToString()))
 							{
@@ -377,18 +517,18 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 							// Combine flags and groups
 							acc = acc with
 							{
-								flags = acc.flags.Concat(player.flags.Where(flag => flag.StartsWith($"@"))).Distinct().ToList(),
-								groups = acc.groups.Concat(player.flags.Where(flag => flag.StartsWith($"#"))).Distinct().ToList()
+								flags = acc.flags.Concat(splitFlags.Where(flag => flag.StartsWith("@"))).Distinct().ToList(),
+								groups = acc.groups.Concat(splitFlags.Where(flag => flag.StartsWith("#"))).Distinct().ToList()
 							};
 
 							return acc;
 						});
-					
+
 					Server.NextWorldUpdate(() =>
 					{
 						var keysToRemove = new List<SteamID>();
 
-						foreach (var steamId in AdminCache.Keys.ToList()) 
+						foreach (var steamId in AdminCache.Keys.ToList())
 						{
 							var data = AdminManager.GetPlayerAdminData(steamId);
 							if (data != null)
@@ -455,7 +595,7 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 
 					return consolidatedData;
 				});
-		
+
 		var options = new JsonSerializerOptions
 		{
 			WriteIndented = true,
@@ -463,206 +603,206 @@ public class PermissionManager(IDatabaseProvider? databaseProvider)
 		};
 
 		var json = JsonSerializer.Serialize(jsonData, options);
-        var filePath = Path.Combine(CS2_SimpleAdmin.Instance.ModuleDirectory, "data", "admins.json");
-        
-        await File.WriteAllTextAsync(filePath, json);
+		var filePath = Path.Combine(CS2_SimpleAdmin.Instance.ModuleDirectory, "data", "admins.json");
 
-        //await File.WriteAllTextAsync(CS2_SimpleAdmin.Instance.ModuleDirectory + "/data/admins.json", json);
-    }
+		await File.WriteAllTextAsync(filePath, json);
 
-    /// <summary>
-    /// Deletes an admin by their SteamID from the database asynchronously.
-    /// </summary>
-    /// <param name="playerSteamId">The SteamID of the admin to delete.</param>
-    /// <param name="globalDelete">Whether to delete the admin globally or only for the current server.</param>
-    public async Task DeleteAdminBySteamId(string playerSteamId, bool globalDelete = false)
-    {
-	    if (databaseProvider == null) return;
-        if (string.IsNullOrEmpty(playerSteamId)) return;
+		//await File.WriteAllTextAsync(CS2_SimpleAdmin.Instance.ModuleDirectory + "/data/admins.json", json);
+	}
 
-        //_adminCache.TryRemove(playerSteamId, out _);
+	/// <summary>
+	/// Deletes an admin by their SteamID from the database asynchronously.
+	/// </summary>
+	/// <param name="playerSteamId">The SteamID of the admin to delete.</param>
+	/// <param name="globalDelete">Whether to delete the admin globally or only for the current server.</param>
+	public async Task DeleteAdminBySteamId(string playerSteamId, bool globalDelete = false)
+	{
+		if (databaseProvider == null) return;
+		if (string.IsNullOrEmpty(playerSteamId)) return;
 
-        try
-        {
-	        await using var connection = await databaseProvider.CreateConnectionAsync();
-            var sql = databaseProvider.GetDeleteAdminQuery(globalDelete);
-            await connection.ExecuteAsync(sql, new { PlayerSteamID = playerSteamId, CS2_SimpleAdmin.ServerId });
-        }
-        catch (Exception ex)
-        {
-            CS2_SimpleAdmin._logger?.LogError(ex.Message);
-        }
-    }
+		//_adminCache.TryRemove(playerSteamId, out _);
 
-    /// <summary>
-    /// Adds a new admin with specified details asynchronously.
-    /// </summary>
-    /// <param name="playerSteamId">SteamID of the admin.</param>
-    /// <param name="playerName">Name of the admin.</param>
-    /// <param name="flagsList">List of flags assigned to the admin.</param>
-    /// <param name="immunity">Immunity level.</param>
-    /// <param name="time">Duration in minutes for admin expiration; 0 means permanent.</param>
-    /// <param name="globalAdmin">Whether the admin is global or server-specific.</param>
-    public async Task AddAdminBySteamId(string playerSteamId, string playerName, List<string> flagsList, int immunity = 0, int time = 0, bool globalAdmin = false)
-    {
-	    if (databaseProvider == null) return;
+		try
+		{
+			await using var connection = await databaseProvider.CreateConnectionAsync();
+			var sql = databaseProvider.GetDeleteAdminQuery(globalDelete);
+			await connection.ExecuteAsync(sql, new { PlayerSteamID = playerSteamId, CS2_SimpleAdmin.ServerId });
+		}
+		catch (Exception ex)
+		{
+			CS2_SimpleAdmin._logger?.LogError(ex.Message);
+		}
+	}
 
-        if (string.IsNullOrEmpty(playerSteamId) || flagsList.Count == 0) return;
+	/// <summary>
+	/// Adds a new admin with specified details asynchronously.
+	/// </summary>
+	/// <param name="playerSteamId">SteamID of the admin.</param>
+	/// <param name="playerName">Name of the admin.</param>
+	/// <param name="flagsList">List of flags assigned to the admin.</param>
+	/// <param name="immunity">Immunity level.</param>
+	/// <param name="time">Duration in minutes for admin expiration; 0 means permanent.</param>
+	/// <param name="globalAdmin">Whether the admin is global or server-specific.</param>
+	public async Task AddAdminBySteamId(string playerSteamId, string playerName, List<string> flagsList, int immunity = 0, int time = 0, bool globalAdmin = false)
+	{
+		if (databaseProvider == null) return;
 
-        var now = Time.ActualDateTime();
-        DateTime? futureTime;
+		if (string.IsNullOrEmpty(playerSteamId) || flagsList.Count == 0) return;
 
-        if (time != 0)
-            futureTime = now.AddMinutes(time);
-        else
-            futureTime = null;
+		var now = Time.ActualDateTime();
+		DateTime? futureTime;
 
-        try
-        {
-            await using var connection = await databaseProvider.CreateConnectionAsync();
+		if (time != 0)
+			futureTime = now.AddMinutes(time);
+		else
+			futureTime = null;
 
-            // Insert admin into sa_admins table
-            var insertAdminSql = databaseProvider.GetAddAdminQuery();
-            var adminId = await connection.ExecuteScalarAsync<int>(insertAdminSql, new
-            {
-                playerSteamId,
-                playerName,
-                immunity,
-                ends = futureTime,
-                created = now,
-                serverid = globalAdmin ? null : CS2_SimpleAdmin.ServerId
-            });
+		try
+		{
+			await using var connection = await databaseProvider.CreateConnectionAsync();
 
-            // Insert flags into sa_admins_flags table
-            foreach (var flag in flagsList)
-            {
-                // if (flag.StartsWith($"#"))
-                // {
-                //     // const string sql = "SELECT id FROM `sa_groups` WHERE name = @groupName";
-                //     // var groupId = await connection.QuerySingleOrDefaultAsync<int?>(sql, new { groupName = flag });
-                //
-                //     var sql = databaseProvider.GetGroupIdByNameQuery();
-                //     var groupId = await connection.QuerySingleOrDefaultAsync<int?>(sql, new { groupName = flag, CS2_SimpleAdmin.ServerId });
-                //     
-                //     if (groupId != null)
-                //     {
-                //         var updateAdminGroup = "UPDATE `sa_admins` SET group_id = @groupId WHERE id = @adminId";
-                //         await connection.ExecuteAsync(updateAdminGroup, new
-                //         {
-                //             groupId,
-                //             adminId
-                //         });
-                //     }
-                // }
+			// Insert admin into sa_admins table
+			var insertAdminSql = databaseProvider.GetAddAdminQuery();
+			var adminId = await connection.ExecuteScalarAsync<int>(insertAdminSql, new
+			{
+				playerSteamId,
+				playerName,
+				immunity,
+				ends = futureTime,
+				created = now,
+				serverid = globalAdmin ? null : CS2_SimpleAdmin.ServerId
+			});
 
-                var insertFlagsSql = databaseProvider.GetAddAdminFlagsQuery();
-                await connection.ExecuteAsync(insertFlagsSql, new
-                {
-                    adminId,
-                    flag
-                });
-            }
+			// Insert flags into sa_admins_flags table
+			foreach (var flag in flagsList)
+			{
+				// if (flag.StartsWith($"#"))
+				// {
+				//     // const string sql = "SELECT id FROM `sa_groups` WHERE name = @groupName";
+				//     // var groupId = await connection.QuerySingleOrDefaultAsync<int?>(sql, new { groupName = flag });
+				//
+				//     var sql = databaseProvider.GetGroupIdByNameQuery();
+				//     var groupId = await connection.QuerySingleOrDefaultAsync<int?>(sql, new { groupName = flag, CS2_SimpleAdmin.ServerId });
+				//     
+				//     if (groupId != null)
+				//     {
+				//         var updateAdminGroup = "UPDATE `sa_admins` SET group_id = @groupId WHERE id = @adminId";
+				//         await connection.ExecuteAsync(updateAdminGroup, new
+				//         {
+				//             groupId,
+				//             adminId
+				//         });
+				//     }
+				// }
 
-            await Server.NextWorldUpdateAsync(() =>
-            {
-                CS2_SimpleAdmin.Instance.ReloadAdmins(null);
-            });
-        }
-        catch (Exception ex)
-        {
-            CS2_SimpleAdmin._logger?.LogError(ex.ToString());
-        }
-    }
+				var insertFlagsSql = databaseProvider.GetAddAdminFlagsQuery();
+				await connection.ExecuteAsync(insertFlagsSql, new
+				{
+					adminId,
+					flag
+				});
+			}
 
-    /// <summary>
-    /// Adds a new group with flags and immunity asynchronously.
-    /// </summary>
-    /// <param name="groupName">Name of the group.</param>
-    /// <param name="flagsList">List of flags assigned to the group.</param>
-    /// <param name="immunity">Immunity level of the group.</param>
-    /// <param name="globalGroup">Whether the group is global or server-specific.</param>
-    public async Task AddGroup(string groupName, List<string> flagsList, int immunity = 0, bool globalGroup = false)
-    {
-	    if (databaseProvider == null) return;
+			await Server.NextWorldUpdateAsync(() =>
+			{
+				CS2_SimpleAdmin.Instance.ReloadAdmins(null);
+			});
+		}
+		catch (Exception ex)
+		{
+			CS2_SimpleAdmin._logger?.LogError(ex.ToString());
+		}
+	}
 
-        if (string.IsNullOrEmpty(groupName) || flagsList.Count == 0) return;
+	/// <summary>
+	/// Adds a new group with flags and immunity asynchronously.
+	/// </summary>
+	/// <param name="groupName">Name of the group.</param>
+	/// <param name="flagsList">List of flags assigned to the group.</param>
+	/// <param name="immunity">Immunity level of the group.</param>
+	/// <param name="globalGroup">Whether the group is global or server-specific.</param>
+	public async Task AddGroup(string groupName, List<string> flagsList, int immunity = 0, bool globalGroup = false)
+	{
+		if (databaseProvider == null) return;
 
-        await using var connection = await databaseProvider.CreateConnectionAsync();
-        try
-        {
-            // Insert group into sa_groups table
-            var insertGroup = databaseProvider.GetAddGroupQuery();
-            var groupId = await connection.ExecuteScalarAsync<int>(insertGroup, new
-            {
-                groupName,
-                immunity
-            });
+		if (string.IsNullOrEmpty(groupName) || flagsList.Count == 0) return;
 
-            // Insert flags into sa_groups_flags table
-            foreach (var flag in flagsList)
-            {
-	            var insertFlagsSql = databaseProvider.GetAddGroupFlagsQuery();
+		await using var connection = await databaseProvider.CreateConnectionAsync();
+		try
+		{
+			// Insert group into sa_groups table
+			var insertGroup = databaseProvider.GetAddGroupQuery();
+			var groupId = await connection.ExecuteScalarAsync<int>(insertGroup, new
+			{
+				groupName,
+				immunity
+			});
 
-                await connection.ExecuteAsync(insertFlagsSql, new
-                {
-                    groupId,
-                    flag
-                });
-            }
+			// Insert flags into sa_groups_flags table
+			foreach (var flag in flagsList)
+			{
+				var insertFlagsSql = databaseProvider.GetAddGroupFlagsQuery();
 
-            var insertGroupServer = databaseProvider.GetAddGroupServerQuery();
-            await connection.ExecuteAsync(insertGroupServer, new { groupId, server_id = globalGroup ? null : CS2_SimpleAdmin.ServerId });
-            await Server.NextWorldUpdateAsync(() =>
-            {
-                CS2_SimpleAdmin.Instance.ReloadAdmins(null);
-            });
+				await connection.ExecuteAsync(insertFlagsSql, new
+				{
+					groupId,
+					flag
+				});
+			}
 
-        }
-        catch (Exception ex)
-        {
-            CS2_SimpleAdmin._logger?.LogError("Problem with loading admins: {exception}", ex.Message);
-        }
-    }
+			var insertGroupServer = databaseProvider.GetAddGroupServerQuery();
+			await connection.ExecuteAsync(insertGroupServer, new { groupId, server_id = globalGroup ? null : CS2_SimpleAdmin.ServerId });
+			await Server.NextWorldUpdateAsync(() =>
+			{
+				CS2_SimpleAdmin.Instance.ReloadAdmins(null);
+			});
 
-    /// <summary>
-    /// Deletes a group by name asynchronously.
-    /// </summary>
-    /// <param name="groupName">Name of the group to delete.</param>
-    public async Task DeleteGroup(string groupName)
-    {
-	    if (databaseProvider == null) return;
+		}
+		catch (Exception ex)
+		{
+			CS2_SimpleAdmin._logger?.LogError("Problem with loading admins: {exception}", ex.Message);
+		}
+	}
 
-        if (string.IsNullOrEmpty(groupName)) return;
+	/// <summary>
+	/// Deletes a group by name asynchronously.
+	/// </summary>
+	/// <param name="groupName">Name of the group to delete.</param>
+	public async Task DeleteGroup(string groupName)
+	{
+		if (databaseProvider == null) return;
 
-        await using var connection = await databaseProvider.CreateConnectionAsync();
-        try
-        {
-	        var sql = databaseProvider.GetDeleteGroupQuery();
-            await connection.ExecuteAsync(sql, new { groupName });
-        }
-        catch (Exception ex)
-        {
-            CS2_SimpleAdmin._logger?.LogError(ex.ToString());
-        }
-    }
+		if (string.IsNullOrEmpty(groupName)) return;
 
-    /// <summary>
-    /// Deletes admins whose permissions have expired asynchronously.
-    /// </summary>
-    public async Task DeleteOldAdmins()
-    {
-	    if (databaseProvider == null) return;
+		await using var connection = await databaseProvider.CreateConnectionAsync();
+		try
+		{
+			var sql = databaseProvider.GetDeleteGroupQuery();
+			await connection.ExecuteAsync(sql, new { groupName });
+		}
+		catch (Exception ex)
+		{
+			CS2_SimpleAdmin._logger?.LogError(ex.ToString());
+		}
+	}
 
-        try
-        {
-            await using var connection = await databaseProvider.CreateConnectionAsync();
+	/// <summary>
+	/// Deletes admins whose permissions have expired asynchronously.
+	/// </summary>
+	public async Task DeleteOldAdmins()
+	{
+		if (databaseProvider == null) return;
 
-            var sql = databaseProvider.GetDeleteOldAdminsQuery();
-            await connection.ExecuteAsync(sql, new { CurrentTime = Time.ActualDateTime() });
-        }
-        catch (Exception)
-        {
-            CS2_SimpleAdmin._logger?.LogCritical("Unable to remove expired admins");
-        }
-    }
+		try
+		{
+			await using var connection = await databaseProvider.CreateConnectionAsync();
+
+			var sql = databaseProvider.GetDeleteOldAdminsQuery();
+			await connection.ExecuteAsync(sql, new { CurrentTime = Time.ActualDateTime() });
+		}
+		catch (Exception)
+		{
+			CS2_SimpleAdmin._logger?.LogCritical("Unable to remove expired admins");
+		}
+	}
 }

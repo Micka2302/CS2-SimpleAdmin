@@ -1,15 +1,14 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Capabilities;
-using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using CS2_SimpleAdmin.Models;
 using CS2_SimpleAdminApi;
-using MenuManager;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using CS2_SimpleAdmin.Database;
 using CS2_SimpleAdmin.Managers;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
+
+using Menu;
 
 namespace CS2_SimpleAdmin;
 
@@ -59,29 +58,28 @@ public partial class CS2_SimpleAdmin
     // Logger
     internal static ILogger? _logger;
 
-    // Memory Function (Game-related)
-    private static MemoryFunctionVoid<CBasePlayerController, CCSPlayerPawn, bool, bool>?
-        _cBasePlayerControllerSetPawnFunc;
-
     // Menu API and Capabilities
-    internal static IMenuApi? MenuApi;
-    private static readonly PluginCapability<IMenuApi> MenuCapability = new("menu:nfcore");
+    public static KitsuneMenu Menu { get; private set; } = null!;
 
     // Shared API
     internal static Api.CS2_SimpleAdminApi? SimpleAdminApi { get; private set; }
 
     // Managers
-    internal PermissionManager PermissionManager = new(DatabaseProvider);
+    internal PermissionManager PermissionManager = new(DatabaseProvider, null);
     internal BanManager BanManager = new(DatabaseProvider);
     internal MuteManager MuteManager = new(DatabaseProvider);
     internal WarnManager WarnManager = new(DatabaseProvider);
     internal CacheManager? CacheManager = new();
+    internal ChatManager ChatManager = new();
+
+    static string firstMessage = "";
+    static string secondMessage = "";
     private static readonly PlayerManager PlayerManager = new();
 
     // Timers
     internal Timer? PlayersTimer = null;
-    
+
     // Funny list
-    private readonly List<string> _requiredPlugins = ["MenuManagerCore", "PlayerSettings"];
-    private readonly List<string> _requiredShared = ["MenuManagerApi", "PlayerSettingsApi", "AnyBaseLib", "CS2-SimpleAdminApi"];
+    private readonly List<string> _requiredPlugins = [];
+    private readonly List<string> _requiredShared = ["KitsuneMenu", "CS2-SimpleAdminApi"];
 }

@@ -1,5 +1,6 @@
 using System.Numerics;
 using CounterStrikeSharp.API.Modules.Entities;
+using FixVectorLeak;
 
 namespace CS2_SimpleAdminApi;
 
@@ -31,10 +32,10 @@ public class PlayerInfo(
     public bool IsLoaded { get; set; }
 }
 
-public class DiePosition(Vector3 position, Vector3 angle)
+public struct DiePosition(Vector_t position, QAngle_t angle)
 {
-    public Vector3 Position { get; } = position;
-    public Vector3 Angle { get; } = angle;
+    public Vector_t Position { get; set; } = position;
+    public QAngle_t Angle { get; set; } = angle;
 }
 
 

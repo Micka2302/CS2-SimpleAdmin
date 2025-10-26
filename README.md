@@ -1,3 +1,7 @@
+# This fork is made to support [CSSPanel](https://github.com/CSSPanel/Panel)'s functionalities:
+- This fork has added some variables in config file so refer to: `CS2-SimpleAdmin.example.json`. That's all for folks who are upgrading from [CSSPanel Plugin](https://github.com/CSSPanel/Plugin)
+- If you are upgrading from [CS2-SimpleAdmin](https://github.com/daffyyyy/CS2-SimpleAdmin) and want to use CSSPanel stuff, you need to execute `Database/Migrations/116_CSSPanelSupport.sql` file in your database.
+
 <p align="center">
   <a href="https://github.com/daffyyyy/CS2-SimpleAdmin/actions/workflows/build.yml">
     <img src="https://github.com/daffyyyy/CS2-SimpleAdmin/actions/workflows/build.yml/badge.svg" alt="Build and Publish" />
@@ -37,12 +41,8 @@
 
 **Ensure all the following dependencies are installed before proceeding**
 - [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp)  
-- [PlayerSettings](https://github.com/NickFox007/PlayerSettingsCS2) - Required by MenuManagerCS2
-- [AnyBaseLibCS2](https://github.com/NickFox007/AnyBaseLibCS2) - Required by PlayerSettings
-- [MenuManagerCS2](https://github.com/NickFox007/MenuManagerCS2)
-- MySQL database / SQLite
-
----
+- KitsuneMenu (attached binary with release)
+- MySQL database
 
 ## 🚀 Getting Started
 

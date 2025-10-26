@@ -384,7 +384,8 @@ public partial class CS2_SimpleAdmin
         var adminInfo = caller != null && caller.UserId.HasValue ? PlayersInfo[caller.SteamID] : null;
 
         // Set player's voice flags to muted
-        player.VoiceFlags = VoiceFlags.Muted;
+        if (!player.VoiceFlags.HasFlag(VoiceFlags.Muted))
+			player.VoiceFlags |= VoiceFlags.Muted;
 
         // Asynchronously handle mute logic
         Task.Run(async () =>
@@ -588,7 +589,8 @@ public partial class CS2_SimpleAdmin
             if (player != null && player.IsValid)
             {
                 PlayerPenaltyManager.RemovePenaltiesByType(player.Slot, PenaltyType.Mute);
-                player.VoiceFlags = VoiceFlags.Normal;
+                if (player.VoiceFlags.HasFlag(VoiceFlags.Muted))
+				    player.VoiceFlags &= ~VoiceFlags.Muted;
 
                 Task.Run(async () =>
                 {
@@ -607,7 +609,8 @@ public partial class CS2_SimpleAdmin
         if (namePlayer != null && namePlayer.IsValid)
         {
             PlayerPenaltyManager.RemovePenaltiesByType(namePlayer.Slot, PenaltyType.Mute);
-            namePlayer.VoiceFlags = VoiceFlags.Normal;
+            if (namePlayer.VoiceFlags.HasFlag(VoiceFlags.Muted))
+				    namePlayer.VoiceFlags &= ~VoiceFlags.Muted;
 
             if (namePlayer.UserId.HasValue && PlayersInfo[namePlayer.SteamID].TotalMutes > 0)
                 PlayersInfo[namePlayer.SteamID].TotalMutes--;
@@ -696,6 +699,10 @@ public partial class CS2_SimpleAdmin
         // Get player and admin information
         var playerInfo = PlayersInfo[player.SteamID];
         var adminInfo = caller != null && caller.UserId.HasValue ? PlayersInfo[caller.SteamID] : null;
+
+        // Set player's voice flags to muted
+        if (!player.VoiceFlags.HasFlag(VoiceFlags.Muted))
+			player.VoiceFlags |= VoiceFlags.Muted;
 
         // Asynchronously handle silence logic
         Task.Run(async () =>
@@ -903,7 +910,8 @@ public partial class CS2_SimpleAdmin
                 PlayerPenaltyManager.RemovePenaltiesByType(player.Slot, PenaltyType.Silence);
 
                 // Reset voice flags to normal
-                player.VoiceFlags = VoiceFlags.Normal;
+                if (player.VoiceFlags.HasFlag(VoiceFlags.Muted))
+				    player.VoiceFlags &= ~VoiceFlags.Muted;
 
                 Task.Run(async () =>
                 {
@@ -924,7 +932,8 @@ public partial class CS2_SimpleAdmin
             PlayerPenaltyManager.RemovePenaltiesByType(namePlayer.Slot, PenaltyType.Silence);
 
             // Reset voice flags to normal
-            namePlayer.VoiceFlags = VoiceFlags.Normal;
+            if (namePlayer.VoiceFlags.HasFlag(VoiceFlags.Muted))
+				    namePlayer.VoiceFlags &= ~VoiceFlags.Muted;
 
             if (namePlayer.UserId.HasValue && PlayersInfo[namePlayer.SteamID].TotalSilences > 0)
                 PlayersInfo[namePlayer.SteamID].TotalSilences--;

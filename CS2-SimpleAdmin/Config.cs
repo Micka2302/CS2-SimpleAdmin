@@ -89,7 +89,7 @@ public class Discord
         new() { Name = "Footer", Value = "" },
         new() { Name = "Time", Value = "{relative}" },
     ];
-    
+
     [JsonPropertyName("DiscordAssociatedAccountsSettings")]
     public DiscordPenaltySetting[] DiscordAssociatedAccountsSettings { get; set; } =
     [
@@ -100,6 +100,21 @@ public class Discord
         new() { Name = "Footer", Value = "" },
         new() { Name = "Time", Value = "{relative}" },
     ];
+}
+
+public class ChatLog
+{
+    [JsonPropertyName("ChatLog_Enable")]
+    public bool ChatLog_Enable { get; set; } = true;
+
+    [JsonPropertyName("ChatLog_ExcludeMessageContains")]
+    public string ExcludeMessageContains { get; set; } = "!./";
+
+    [JsonPropertyName("ChatLog_ExcludeMessageContainsLessThanXLetters")]
+    public int ExcludeMessageContainsLessThanXLetters { get; set; } = 0;
+
+    [JsonPropertyName("ChatLog_ExcludeMessageDuplicate")]
+    public bool ExcludeMessageDuplicate { get; set; } = false;
 }
 
 public class CustomServerCommandData
@@ -214,7 +229,7 @@ public class OtherSettings
 
     [JsonPropertyName("MaxBanDuration")]
     public int MaxBanDuration { get; set; } = 60 * 24 * 7;
-    
+
     [JsonPropertyName("MaxMuteDuration")]
     public int MaxMuteDuration { get; set; } = 60 * 24 * 7;
 
@@ -226,21 +241,22 @@ public class OtherSettings
 
     [JsonPropertyName("DisconnectedPlayersHistoryCount")]
     public int DisconnectedPlayersHistoryCount { get; set; } = 10;
-    
+
     [JsonPropertyName("NotifyPenaltiesToAdminOnConnect")]
     public bool NotifyPenaltiesToAdminOnConnect { get; set; } = true;
-    
+
     [JsonPropertyName("ShowBanMenuIfNoTime")]
     public bool ShowBanMenuIfNoTime { get; set; } = true;
-    
+
     [JsonPropertyName("UserMessageGagChatType")]
     public bool UserMessageGagChatType { get; set; } = false;
-    
+
     [JsonPropertyName("CheckMultiAccountsByIp")]
     public bool CheckMultiAccountsByIp { get; set; } = true;
 
     [JsonPropertyName("AdditionalCommandsToLog")]
     public List<string> AdditionalCommandsToLog { get; set; } = new();
+
     [JsonPropertyName("IgnoredIps")]
     public List<string> IgnoredIps { get; set; } = new();
 }
@@ -249,14 +265,11 @@ public class CS2_SimpleAdminConfig : BasePluginConfig
 {
     [JsonPropertyName("ConfigVersion")] public override int Version { get; set; } = 25;
 
-    [JsonPropertyName("DatabaseConfig")] 
+    [JsonPropertyName("DatabaseConfig")]
     public DatabaseConfig DatabaseConfig { get; set; } = new();
- 
+
     [JsonPropertyName("OtherSettings")]
     public OtherSettings OtherSettings { get; set; } = new();
-
-    [JsonPropertyName("EnableMetrics")]
-    public bool EnableMetrics { get; set; } = true;
 
     [JsonPropertyName("EnableUpdateCheck")]
     public bool EnableUpdateCheck { get; set; } = true;
@@ -288,6 +301,21 @@ public class CS2_SimpleAdminConfig : BasePluginConfig
 
     [JsonPropertyName("MenuConfig")]
     public MenuConfig MenuConfigs { get; set; } = new();
+
+    [JsonPropertyName("DefaultServerIP")]
+    public string DefaultServerIP { get; set; } = "";
+
+    [JsonPropertyName("ChatLog")]
+    public ChatLog ChatLog { get; set; } = new ChatLog();
+
+    [JsonPropertyName("Statistics_Enable")]
+    public bool Statistics_Enable { get; set; } = true;
+
+    [JsonPropertyName("IsCSSPanel")]
+    public bool IsCSSPanel { get; set; } = false;
+
+    [JsonPropertyName("BanIDBan")]
+    public bool BanIDBan { get; set; } = true;
 }
 
 
@@ -295,7 +323,7 @@ public class DatabaseConfig
 {
     [JsonPropertyName("DatabaseType")]
     public string DatabaseType { get; set; } = "SQLite";
-    
+
     [JsonPropertyName("SqliteFilePath")]
     public string SqliteFilePath { get; set; } = "cs2-simpleadmin.sqlite";
 
@@ -313,7 +341,7 @@ public class DatabaseConfig
 
     [JsonPropertyName("DatabaseName")]
     public string DatabaseName { get; set; } = "";
-    
+
     [JsonPropertyName("DatabaseSSlMode")]
     public string DatabaseSSlMode { get; set; } = "preferred";
 }

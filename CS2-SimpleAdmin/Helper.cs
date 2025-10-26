@@ -21,10 +21,36 @@ using System.Text.RegularExpressions;
 using CounterStrikeSharp.API.Core.Plugin.Host;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CS2_SimpleAdmin.Managers;
-using MenuManager;
 using ZLinq;
 
 namespace CS2_SimpleAdmin;
+
+public partial class CS2_SimpleAdmin
+{
+    bool IsStringValid(string input)
+    {
+        if (!string.IsNullOrEmpty(input) && (string.IsNullOrEmpty(Config.ChatLog.ExcludeMessageContains) || !input.Any(c => Config.ChatLog.ExcludeMessageContains.Contains(c))) && !char.IsWhiteSpace(input.Last()))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    static int CountLetters(string input)
+    {
+        int count = 0;
+
+        foreach (char c in input)
+        {
+            if (char.IsLetter(c))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+}
 
 internal static class Helper
 {
@@ -66,17 +92,17 @@ internal static class Helper
     {
         return CS2_SimpleAdmin.CachedPlayers.AsValueEnumerable().ToList();
     }
-    
+
     public static List<CCSPlayerController> GetValidPlayersWithBots()
     {
         return CS2_SimpleAdmin.CachedPlayers.Concat(CS2_SimpleAdmin.BotPlayers).AsValueEnumerable().ToList();
     }
 
-    // public static bool IsValidSteamId64(string input)
-    // {
-    //     const string pattern = @"^\d{17}$";
-    //     return Regex.IsMatch(input, pattern);
-    // }
+    public static bool IsValidSteamId64(string input)
+    {
+        const string pattern = @"^\d{17}$";
+        return Regex.IsMatch(input, pattern);
+    }
 
     public static bool ValidateSteamId(string input, out SteamID? steamId)
     {
@@ -86,7 +112,7 @@ internal static class Helper
         {
             return false;
         }
-        
+
         if (!SteamID.TryParse(input, out var parsedSteamId)) return false;
 
         steamId = parsedSteamId;
@@ -136,7 +162,7 @@ internal static class Helper
 
         if (player == null || !player.IsValid || player.IsHLTV)
             return;
-        
+
         if (player.UserId.HasValue && CS2_SimpleAdmin.PlayersInfo.TryGetValue(player.SteamID, out var value))
             value.WaitingForKick = true;
 
@@ -148,14 +174,14 @@ internal static class Helper
         {
             playerPawn.Freeze();
             playerPawn.Colorize(255, 0, 0);
-            
+
             var weaponServices = playerPawn.WeaponServices;
             if (weaponServices == null)
                 return;
 
             foreach (var _weap in weaponServices.MyWeapons)
             {
-                var weapon = _weap.Value;;
+                var weapon = _weap.Value; ;
                 if (weapon == null || !weapon.IsValid)
                     continue;
                 if (weapon.DesignerName.Contains("c4") || weapon.DesignerName.Contains("healthshot"))
@@ -167,14 +193,14 @@ internal static class Helper
                 Utilities.SetStateChanged(weapon, "CBasePlayerWeapon", "m_nNextSecondaryAttackTick");
             }
         }
-        
+
         if (delay > 0)
         {
             CS2_SimpleAdmin.Instance.AddTimer(delay, () =>
             {
                 if (!player.IsValid || player.IsHLTV)
                     return;
-                
+
                 // Server.ExecuteCommand($"kickid {player.UserId}");
 
                 playerPawn?.Colorize();
@@ -186,9 +212,9 @@ internal static class Helper
             // Server.ExecuteCommand($"kickid {player.UserId}");
 
             playerPawn?.Colorize();
-            player.Disconnect(reason); 
+            player.Disconnect(reason);
         }
-        
+
         if (CS2_SimpleAdmin.UnlockedCommands && reason == NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED)
             Server.ExecuteCommand($"banid 1 {new SteamID(player.SteamID).SteamId3}");
 
@@ -204,7 +230,7 @@ internal static class Helper
         //
         // Server.ExecuteCommand($"kickid {userId} {reason}");
     }
-    
+
     public static void KickPlayer(CCSPlayerController player, NetworkDisconnectionReason reason = NetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED, int delay = 0)
     {
         if (!player.IsValid || player.IsHLTV)
@@ -214,10 +240,10 @@ internal static class Helper
         {
             if (value.WaitingForKick)
                 return;
-            
+
             value.WaitingForKick = true;
         }
-        
+
         player.VoiceFlags = VoiceFlags.Muted;
         var playerPawn = player.PlayerPawn.Value;
         if (playerPawn != null && playerPawn.LifeState == (int)LifeState_t.LIFE_ALIVE)
@@ -251,7 +277,7 @@ internal static class Helper
             {
                 if (!player.IsValid || player.IsHLTV)
                     return;
-                
+
                 // if (!string.IsNullOrEmpty(reason))
                 // {
                 // 	var escapeChars = reason.IndexOfAny([';', '|']);
@@ -272,7 +298,7 @@ internal static class Helper
 
             player.Disconnect(reason);
         }
-        
+
         if (CS2_SimpleAdmin.UnlockedCommands && reason == NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED)
             Server.ExecuteCommand($"banid 1 {new SteamID(player.SteamID).SteamId3}");
 
@@ -316,9 +342,9 @@ internal static class Helper
         {
             return numericMinutes;
         }
-        
+
         int totalMinutes = 0;
-        
+
         var regex = new Regex(@"(\d+)([a-z]+)");
         var matches = regex.Matches(time);
 
@@ -336,7 +362,7 @@ internal static class Helper
                 throw new ArgumentException($"Invalid time unit '{unit}' in time string.", nameof(time));
             }
         }
-        
+
         return totalMinutes > 0 ? totalMinutes : -1;
     }
 
@@ -346,15 +372,6 @@ internal static class Helper
         {
             controller.PrintToCenter(message);
         });
-    }
-
-    internal static void HandleVotes(CCSPlayerController player, ChatMenuOption option)
-    {
-        if (!CS2_SimpleAdmin.VoteInProgress)
-            return;
-
-        option.Disabled = true;
-        CS2_SimpleAdmin.VoteAnswers[option.Text]++;
     }
 
     internal static void LogCommand(CCSPlayerController? caller, CommandInfo command)
@@ -368,7 +385,7 @@ internal static class Helper
         CS2_SimpleAdmin.Instance.Logger.LogInformation($"{CS2_SimpleAdmin._localizer[
             "sa_discord_log_command",
             playerName, command.GetCommandString]}".Replace("HOSTNAME", hostname).Replace("**", ""));
-        
+
         SendDiscordLogMessage(caller, command, CS2_SimpleAdmin._localizer);
     }
 
@@ -442,18 +459,21 @@ internal static class Helper
     {
         string[] publishActions = ["ban", "gag", "silence", "mute"];
 
+
         if (CS2_SimpleAdmin.Instance.Config.OtherSettings.ShowActivityType == 0) return;
         if (CS2_SimpleAdmin._localizer == null) return;
+
 
         if (string.IsNullOrWhiteSpace(callerName))
             callerName = CS2_SimpleAdmin._localizer["sa_console"];
 
         var formattedMessageArgs = messageArgs.Select(arg => arg.ToString() ?? string.Empty).ToArray();
 
-        if (!dontPublish && publishActions.Any(messageKey.Contains))
+        if (dontPublish == false && publishActions.Any(messageKey.Contains))
         {
             CS2_SimpleAdmin.SimpleAdminApi?.OnAdminShowActivityEvent(messageKey, callerName, dontPublish, messageArgs);
         }
+
 
         // // Replace placeholder based on showActivityType
         // for (var i = 0; i < formattedMessageArgs.Length; i++)
@@ -596,7 +616,7 @@ internal static class Helper
 
         for (var i = 0; i < formattedMessageArgs.Length; i++)
         {
-            var arg = formattedMessageArgs[i]; 
+            var arg = formattedMessageArgs[i];
             formattedMessageArgs[i] = CS2_SimpleAdmin.Instance.Config.OtherSettings.ShowActivityType switch
             {
                 1 => arg.Replace("CALLER", CS2_SimpleAdmin._localizer["sa_admin"]),
@@ -652,7 +672,7 @@ internal static class Helper
             time = duration != 0 ? $"<t:{futureUnixTimestamp}:R>" : localizer["sa_permanent"];
         else
             time = duration != 0 ? ConvertMinutesToTime(duration) : localizer["sa_permanent"];
-            
+
         string[] fieldNames = [
             localizer["sa_player"],
             localizer["sa_steamid"],
@@ -664,7 +684,7 @@ internal static class Helper
             $"[{targetName}]({targetCommunityUrl})", $"||{targetSteamId}||", time, reason,
             $"[{callerName}]({callerCommunityUrl})"
         ];
-        
+
         bool[] inlineFlags = [true, true, true, false, false];
         var hostname = ConVar.Find("hostname")?.StringValue ?? localizer["sa_unknown"];
         var colorValue = penaltySetting.FirstOrDefault(s => s.Name.Equals("Color"))?.Value;
@@ -689,7 +709,7 @@ internal static class Helper
             {
                 Text = penaltySetting.FirstOrDefault(s => s.Name.Equals("Footer"))?.Value
             },
-            
+
             Timestamp = Time.ActualDateTime().ToUniversalTime().ToString("o"),
         };
 
@@ -711,7 +731,7 @@ internal static class Helper
             }
         });
     }
-    
+
     public static void SendDiscordPenaltyMessage(CCSPlayerController? caller, string steamId, string reason, int duration, PenaltyType penalty, IStringLocalizer? localizer)
     {
         if (localizer == null) return;
@@ -746,7 +766,7 @@ internal static class Helper
             time = duration != 0 ? $"<t:{futureUnixTimestamp}:R>" : localizer["sa_permanent"];
         else
             time = duration != 0 ? ConvertMinutesToTime(duration) : localizer["sa_permanent"];
-            
+
         string[] fieldNames = [
             localizer["sa_player"],
             localizer["sa_steamid"],
@@ -758,7 +778,7 @@ internal static class Helper
             $"[{targetName}]({targetCommunityUrl})", $"||{targetSteamId}||", time, reason,
             $"[{callerName}]({callerCommunityUrl})"
         ];
-        
+
         bool[] inlineFlags = [true, true, true, false, false];
         var hostname = ConVar.Find("hostname")?.StringValue ?? localizer["sa_unknown"];
         var colorValue = penaltySetting.FirstOrDefault(s => s.Name.Equals("Color"))?.Value;
@@ -783,7 +803,7 @@ internal static class Helper
             {
                 Text = penaltySetting.FirstOrDefault(s => s.Name.Equals("Footer"))?.Value
             },
-            
+
             Timestamp = Time.ActualDateTime().ToUniversalTime().ToString("o"),
         };
 
@@ -804,7 +824,7 @@ internal static class Helper
             }
         });
     }
-    
+
     private static string GenerateMessageDiscord(string message)
     {
         var hostname = ConVar.Find("hostname")?.StringValue ?? CS2_SimpleAdmin._localizer?["sa_unknown"] ?? "Unknown";
@@ -889,39 +909,6 @@ internal static class Helper
                 commandString]));
     }
 
-    #pragma warning disable CS8604
-    public static IMenu? CreateMenu(string title, Action<CCSPlayerController>? backAction = null, Action<CCSPlayerController>? resetAction = null)
-    {
-        if (CS2_SimpleAdmin.MenuApi == null)
-        {
-            return null;
-        }
-
-        var menuType = CS2_SimpleAdmin.Instance.Config.MenuConfigs.MenuType.ToLower();
-        var menu = menuType switch
-        {
-            _ when menuType.Equals("selectable", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenu(title, backAction, resetAction),
-
-            _ when menuType.Equals("dynamic", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenuForcetype(title, MenuType.ButtonMenu, backAction, resetAction),
-
-            _ when menuType.Equals("center", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenuForcetype(title, MenuType.CenterMenu, backAction, resetAction),
-
-            _ when menuType.Equals("chat", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenuForcetype(title, MenuType.ChatMenu, backAction, resetAction),
-
-            _ when menuType.Equals("console", StringComparison.CurrentCultureIgnoreCase) =>
-                CS2_SimpleAdmin.MenuApi.GetMenuForcetype(title, MenuType.ConsoleMenu, backAction, resetAction),
-
-            _ => CS2_SimpleAdmin.MenuApi.GetMenu(title, backAction, resetAction)
-        };
-
-        return menu;
-    }
-    #pragma warning restore CS8604
-
     internal static IPluginManager? GetPluginManager()
     {
         // Access the singleton instance of Application
@@ -930,10 +917,10 @@ internal static class Helper
         // Use Reflection to access the private _pluginManager field
         var pluginManagerField = typeof(Application).GetField("_pluginManager", BindingFlags.NonPublic | BindingFlags.Instance);
         var pluginManager = pluginManagerField?.GetValue(applicationInstance) as IPluginManager;
-        
+
         return pluginManager;
     }
-    
+
 }
 
 public static class PluginInfo
@@ -941,10 +928,10 @@ public static class PluginInfo
     internal static async Task CheckVersion(string localVersion, ILogger logger)
     {
         ShowAd(localVersion);
-        const string versionUrl = "https://raw.githubusercontent.com/daffyyyy/CS2-SimpleAdmin/main/CS2-SimpleAdmin/VERSION";
+        const string versionUrl = "https://raw.githubusercontent.com/cruze03/CS2-SimpleAdmin/main/CS2-SimpleAdmin/VERSION";
         var client = CS2_SimpleAdmin.HttpClient;
         client.Timeout = TimeSpan.FromSeconds(3);
-        
+
         try
         {
             var response = await client.GetAsync(versionUrl);
@@ -959,7 +946,7 @@ public static class PluginInfo
                 switch (comparisonResult)
                 {
                     case < 0:
-                        logger.LogWarning("Plugin is outdated! Check https://github.com/daffyyyy/CS2-SimpleAdmin");
+                        logger.LogWarning("Plugin is outdated! Check https://github.com/cruze03/CS2-SimpleAdmin");
                         break;
                     case > 0:
                         logger.LogInformation("Probably dev version detected");
@@ -995,7 +982,7 @@ public static class PluginInfo
         Console.WriteLine(" _____| ||   | | ||_|| ||   |    |       ||   |___ |   _   ||       || ||_|| ||   | | | |   |");
         Console.WriteLine("|_______||___| |_|   |_||___|    |_______||_______||__| |__||______| |_|   |_||___| |_|  |__|");
         Console.WriteLine("				>> Version: " + moduleVersion);
-        Console.WriteLine("		>> GitHub: https://github.com/daffyyyy/CS2-SimpleAdmin");
+        Console.WriteLine("		>> GitHub: https://github.com/cruze03/CS2-SimpleAdmin");
         Console.WriteLine(" ");
     }
 }
@@ -1027,25 +1014,25 @@ public static class Time
     public static DateTime ActualDateTime()
     {
         return DateTime.UtcNow;
-        string timezoneId = CS2_SimpleAdmin.Instance.Config.Timezone;
-        DateTime utcNow = DateTime.UtcNow;
+        // string timezoneId = CS2_SimpleAdmin.Instance.Config.Timezone;
+        // DateTime utcNow = DateTime.UtcNow;
 
-        try
-        {
-            TimeZoneInfo timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
-            DateTime userTime = TimeZoneInfo.ConvertTimeFromUtc(utcNow, timezone);
-            return userTime;
-        }
-        catch (TimeZoneNotFoundException)
-        {
-            CS2_SimpleAdmin._logger?.LogWarning($"Time zone '{timezoneId}' not found. Returning UTC time.");
-            return utcNow;
-        }
-        catch (InvalidTimeZoneException)
-        {
-            CS2_SimpleAdmin._logger?.LogWarning($"Time zone '{timezoneId}' is invalid. Returning UTC time.");
-            return utcNow;
-        }
+        // try
+        // {
+        //     TimeZoneInfo timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
+        //     DateTime userTime = TimeZoneInfo.ConvertTimeFromUtc(utcNow, timezone);
+        //     return userTime;
+        // }
+        // catch (TimeZoneNotFoundException)
+        // {
+        //     CS2_SimpleAdmin._logger?.LogWarning($"Time zone '{timezoneId}' not found. Returning UTC time.");
+        //     return utcNow;
+        // }
+        // catch (InvalidTimeZoneException)
+        // {
+        //     CS2_SimpleAdmin._logger?.LogWarning($"Time zone '{timezoneId}' is invalid. Returning UTC time.");
+        //     return utcNow;
+        // }
     }
 }
 
@@ -1064,13 +1051,13 @@ public static class WeaponHelper
             if (field.GetValue(null) is not CsItem csItem)
                 continue;
             var enumValue = field.GetValue(null);
-            
+
             dictionary.TryAdd(attribute.Value, csItem);
         }
 
         return dictionary;
     }
-    
+
     public static CsItem? GetEnumFromWeaponName(string weaponName)
     {
         if (WeaponsEnumCache.Value.TryGetValue(weaponName, out var csItem))
@@ -1080,7 +1067,7 @@ public static class WeaponHelper
 
         return null;
     }
-    
+
     public static List<(string EnumMemberValue, CsItem EnumValue)> GetWeaponsByPartialName(string input)
     {
         // Normalize input for case-insensitive comparison
@@ -1131,7 +1118,7 @@ public static class IpHelper
 
         return BitConverter.ToUInt32(bytes, 0);
     }
-    
+
     public static bool TryConvertIpToUint(string ipString, out uint ipUint)
     {
         ipUint = 0;

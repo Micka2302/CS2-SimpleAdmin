@@ -18,10 +18,10 @@ public class ServerManager
         var convar = ConVar.Find("sv_hibernate_when_empty");
         if (convar == null || !convar.GetPrimitiveValue<bool>())
             return;
-        
+
         CS2_SimpleAdmin._logger?.LogError("Detected setting \"sv_hibernate_when_empty true\", set false to make plugin work properly");
     }
-    
+
     /// <summary>
     /// Initiates the asynchronous process to load server data such as IP address, port, hostname, and RCON password.
     /// Handles retry attempts if IP address is not immediately available.
@@ -64,41 +64,53 @@ public class ServerManager
                 }
             }
 
-            // Optimization: Cache remaining ConVar lookups
-            var hostportConVar = ConVar.Find("hostport");
-            var hostnameConVar = ConVar.Find("hostname");
-            var rconPasswordConVar = ConVar.Find("rcon_password");
+            string address = $"{(!string.IsNullOrWhiteSpace(CS2_SimpleAdmin.Instance.Config.DefaultServerIP) ? CS2_SimpleAdmin.Instance.Config.DefaultServerIP : ConVar.Find("ip")!.StringValue)}:{ConVar.Find("hostport")!.GetPrimitiveValue<int>()}";
 
-            var address = $"{ipAddress}:{hostportConVar?.GetPrimitiveValue<int>()}";
-            var hostname = hostnameConVar?.StringValue ?? CS2_SimpleAdmin._localizer?["sa_unknown"] ?? "Unknown";
-            var rconPassword = rconPasswordConVar?.StringValue ?? "";
+            var hostname = ConVar.Find("hostname")!.StringValue;
+            var rcon = ConVar.Find("rcon_password")!.StringValue;
             CS2_SimpleAdmin.IpAddress = address;
-            
+
+            CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", ipAddress);
+
             Task.Run(async () =>
             {
                 try
                 {
                     await using var connection = await CS2_SimpleAdmin.DatabaseProvider.CreateConnectionAsync();
-                    int? serverId = await connection.ExecuteScalarAsync<int?>(
-                        "SELECT id FROM sa_servers WHERE address = @address",
+                    var addressExists = await connection.ExecuteScalarAsync<bool>(
+                        "SELECT COUNT(*) FROM sa_servers WHERE address = @address",
                         new { address });
 
-                    if (serverId == null)
+                    if (!addressExists)
                     {
-                        await connection.ExecuteAsync(
-                            "INSERT INTO sa_servers (address, hostname, rcon_password) VALUES (@address, @hostname, @rconPassword)",
-                            new { address, hostname, rconPassword });
+                        string query = "INSERT INTO sa_servers (address, hostname) VALUES (@address, @hostname)";
 
-                        serverId = await connection.ExecuteScalarAsync<int>(
-                            "SELECT id FROM sa_servers WHERE address = @address",
-                            new { address });
+                        if (CS2_SimpleAdmin.Instance.Config.IsCSSPanel)
+                        {
+                            query = "INSERT INTO sa_servers (address, hostname, rcon) VALUES (@address, @hostname, @rcon)";
+                        }
+
+                        await connection.ExecuteAsync(
+                            query,
+                            new { address, hostname, rcon });
                     }
                     else
                     {
+                        string query = "UPDATE `sa_servers` SET `hostname` = @hostname, `id` = `id` WHERE `address` = @address";
+
+                        if (CS2_SimpleAdmin.Instance.Config.IsCSSPanel)
+                        {
+                            query = "UPDATE `sa_servers` SET `hostname` = @hostname, rcon = @rcon, `id` = `id` WHERE `address` = @address";
+                        }
+
                         await connection.ExecuteAsync(
-                            "UPDATE sa_servers SET hostname = @hostname, rcon_password = @rconPassword WHERE address = @address",
-                            new { address, hostname, rconPassword });
+                            query,
+                            new { address, rcon, hostname });
                     }
+
+                    int? serverId = await connection.ExecuteScalarAsync<int>(
+                        "SELECT `id` FROM `sa_servers` WHERE `address` = @address",
+                        new { address });
 
                     CS2_SimpleAdmin.ServerId = serverId;
                     CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", ipAddress);
@@ -116,23 +128,8 @@ public class ServerManager
                 {
                     CS2_SimpleAdmin._logger?.LogCritical("Unable to create or get server_id: " + ex.Message);
                 }
-
-                if (CS2_SimpleAdmin.Instance.Config.EnableMetrics)
-                {
-                    var queryString = $"?address={address}&hostname={hostname}";
-                    var client = CS2_SimpleAdmin.HttpClient;
-
-                    try
-                    {
-                        await client.GetAsync($"https://api.daffyy.dev/index.php{queryString}");
-                    }
-                    catch (HttpRequestException ex)
-                    {
-                        CS2_SimpleAdmin._logger?.LogWarning($"Unable to make metrics call: {ex.Message}");
-                    }
-                }
             });
-            
+
             CS2_SimpleAdmin.SimpleAdminApi?.OnSimpleAdminReadyEvent();
         });
     }

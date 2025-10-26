@@ -9,7 +9,7 @@ using CounterStrikeSharp.API.Modules.Memory;
 using Microsoft.Extensions.Localization;
 using System.Text;
 using CounterStrikeSharp.API.Modules.UserMessages;
-using Vector = CounterStrikeSharp.API.Modules.Utils.Vector;
+using FixVectorLeak;
 
 namespace CS2_SimpleAdmin;
 
@@ -50,7 +50,7 @@ public static class PlayerExtensions
 
         return AdminManager.CanPlayerTarget(controller, target) ||
                                   AdminManager.CanPlayerTarget(new SteamID(controller.SteamID),
-                                      new SteamID(target.SteamID)) || 
+                                      new SteamID(target.SteamID)) ||
                                       AdminManager.GetPlayerImmunity(controller) >= AdminManager.GetPlayerImmunity(target);
     }
 
@@ -64,7 +64,7 @@ public static class PlayerExtensions
     {
         if (controller is null) return true;
 
-        return AdminManager.CanPlayerTarget(new SteamID(controller.SteamID), steamId) || 
+        return AdminManager.CanPlayerTarget(new SteamID(controller.SteamID), steamId) ||
                AdminManager.GetPlayerImmunity(controller) >= AdminManager.GetPlayerImmunity(steamId);
     }
 
@@ -117,7 +117,7 @@ public static class PlayerExtensions
     public static void SetHp(this CCSPlayerController? controller, int health = 100)
     {
         if (controller == null) return;
-        if (health <= 0 || controller.PlayerPawn.Value == null ||  controller.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE) return;
+        if (health <= 0 || controller.PlayerPawn.Value == null || controller.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE) return;
 
         controller.PlayerPawn.Value.Health = health;
 
@@ -136,12 +136,12 @@ public static class PlayerExtensions
     /// <param name="depth">The depth offset (default 10 units).</param>
     public static void Bury(this CBasePlayerPawn pawn, float depth = 10f)
     {
-        var newPos = new Vector3(pawn.AbsOrigin!.X, pawn.AbsOrigin.Y,
+        var newPos = new Vector_t(pawn.AbsOrigin!.X, pawn.AbsOrigin.Y,
             pawn.AbsOrigin!.Z - depth);
         var newRotation = new Vector3(pawn.AbsRotation!.X, pawn.AbsRotation.Y, pawn.AbsRotation.Z);
         var newVelocity = new Vector3(pawn.AbsVelocity.X, pawn.AbsVelocity.Y, pawn.AbsVelocity.Z);
 
-        pawn.Teleport(newPos, newRotation, newVelocity);
+        pawn.Teleport(newPos, pawn.AbsRotation!.ToQAngle_t(), pawn.AbsVelocity.ToVector_t());
     }
 
     /// <summary>
@@ -151,12 +151,12 @@ public static class PlayerExtensions
     /// <param name="depth">The depth offset (default 15 units).</param>
     public static void Unbury(this CBasePlayerPawn pawn, float depth = 15f)
     {
-        var newPos = new Vector3(pawn.AbsOrigin!.X, pawn.AbsOrigin.Y,
+        var newPos = new Vector_t(pawn.AbsOrigin!.X, pawn.AbsOrigin.Y,
             pawn.AbsOrigin!.Z + depth);
         var newRotation = new Vector3(pawn.AbsRotation!.X, pawn.AbsRotation.Y, pawn.AbsRotation.Z);
         var newVelocity = new Vector3(pawn.AbsVelocity.X, pawn.AbsVelocity.Y, pawn.AbsVelocity.Z);
 
-        pawn.Teleport(newPos, newRotation, newVelocity);
+        pawn.Teleport(newPos, pawn.AbsRotation!.ToQAngle_t(), pawn.AbsVelocity.ToVector_t());
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ public static class PlayerExtensions
         Schema.SetSchemaValue(pawn.Handle, "CBaseEntity", "m_nActualMoveType", 11); // invalid
         Utilities.SetStateChanged(pawn, "CBaseEntity", "m_MoveType");
     }
-    
+
     /// <summary>
     /// Unfreezes the player pawn, enabling movement.
     /// </summary>
@@ -180,7 +180,7 @@ public static class PlayerExtensions
         Schema.SetSchemaValue(pawn.Handle, "CBaseEntity", "m_nActualMoveType", 2); // walk
         Utilities.SetStateChanged(pawn, "CBaseEntity", "m_MoveType");
     }
-    
+
     /// <summary>
     /// Changes the player's color tint to specified RGBA values.
     /// </summary>
@@ -263,9 +263,9 @@ public static class PlayerExtensions
         )
         {
             controller.PlayerPawn.Value.Teleport(
-                target.PlayerPawn.Value.AbsOrigin,
-                target.PlayerPawn.Value.AbsRotation,
-                target.PlayerPawn.Value.AbsVelocity
+                target.PlayerPawn.Value.AbsOrigin!.ToVector_t(),
+                target.PlayerPawn.Value.AbsRotation!.ToQAngle_t(),
+                target.PlayerPawn.Value.AbsVelocity.ToVector_t()
             );
         }
     }
@@ -285,7 +285,7 @@ public static class PlayerExtensions
         /* Teleport in a random direction - thank you, Mani!*/
         /* Thank you AM & al!*/
         var random = new Random();
-        var vel = new Vector3(pawn.AbsVelocity.X, pawn.AbsVelocity.Y, pawn.AbsVelocity.Z);
+        var vel = new Vector_t(pawn.AbsVelocity.X, pawn.AbsVelocity.Y, pawn.AbsVelocity.Z);
 
         vel.X += (random.Next(180) + 50) * (random.Next(2) == 1 ? -1 : 1);
         vel.Y += (random.Next(180) + 50) * (random.Next(2) == 1 ? -1 : 1);

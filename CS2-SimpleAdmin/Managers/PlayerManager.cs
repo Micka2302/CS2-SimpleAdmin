@@ -283,6 +283,39 @@ internal class PlayerManager
     /// </remarks>
     public void CheckPlayersTimer()
     {
+        CS2_SimpleAdmin.Instance.AddTimer(0.12f, () =>
+        {
+            if (CS2_SimpleAdmin.SpeedPlayers.Count > 0)
+            {
+                foreach (var (slot, speed) in CS2_SimpleAdmin.SpeedPlayers)
+                {
+                    var player = Utilities.GetPlayerFromSlot(slot);
+
+                    if (player is null) continue;
+
+                    if (player is { IsValid: true, Connected: PlayerConnectedState.PlayerConnected, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE })
+                    {
+                        player.SetSpeed(speed);
+                    }
+                }
+            }
+
+            if (CS2_SimpleAdmin.GravityPlayers.Count > 0)
+            {
+                foreach (var (slot, gravity) in CS2_SimpleAdmin.GravityPlayers)
+                {
+                    var player = Utilities.GetPlayerFromSlot(slot);
+
+                    if (player is null) continue;
+
+                    if (player is { IsValid: true, Connected: PlayerConnectedState.PlayerConnected, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE })
+                    {
+                        player.SetGravity(gravity);
+                    }
+                }
+            }
+        }, TimerFlags.REPEAT);
+
         CS2_SimpleAdmin.Instance.PlayersTimer = CS2_SimpleAdmin.Instance.AddTimer(61.0f, () =>
         {
 #if DEBUG
@@ -290,7 +323,7 @@ internal class PlayerManager
 #endif
             if (CS2_SimpleAdmin.DatabaseProvider == null)
                 return;
-            
+
             // Optimization: Get players once and avoid allocating anonymous types
             var validPlayers = Helper.GetValidPlayers();
             if (validPlayers.Count == 0)
@@ -373,7 +406,7 @@ internal class PlayerManager
                         await Server.NextWorldUpdateAsync(() => Helper.KickPlayer((int)player.UserId, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED));
                     }
                 }
-                
+
                 if (config.TimeMode == 0)
                 {
                     // Optimization: Manual projection instead of LINQ
