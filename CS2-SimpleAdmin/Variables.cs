@@ -16,6 +16,7 @@ public partial class CS2_SimpleAdmin
 {
     // Config
     public CS2_SimpleAdminConfig Config { get; set; } = new();
+    public static CS2_SimpleAdminConfig? _config;
 
     // HttpClient
     internal static readonly HttpClient HttpClient = new();

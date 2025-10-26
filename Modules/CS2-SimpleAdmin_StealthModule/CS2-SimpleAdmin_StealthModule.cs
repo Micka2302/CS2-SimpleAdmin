@@ -10,28 +10,28 @@ using Microsoft.Extensions.Logging;
 
 namespace CS2_SimpleAdmin_StealthModule;
 
-public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConfig>
+public class CS2_SimpleAdmin_StealthModule : BasePlugin, IPluginConfig<PluginConfig>
 {
     public override string ModuleName => "[CS2-SimpleAdmin] Stealth Module";
     public override string ModuleVersion => "v1.0.2";
     public override string ModuleAuthor => "daffyy";
 
     private static ICS2_SimpleAdminApi? _sharedApi;
-    private readonly PluginCapability<ICS2_SimpleAdminApi> _pluginCapability  = new("simpleadmin:api");
-    
+    private readonly PluginCapability<ICS2_SimpleAdminApi> _pluginCapability = new("simpleadmin:api");
+
     internal static readonly HashSet<CCSPlayerController> Players = [];
     // private readonly HashSet<int> _admins = [];
     // private readonly HashSet<CCSPlayerController> _spectatedPlayers = [];
-    
+
     public PluginConfig Config { get; set; }
 
     public override void Load(bool hotReload)
     {
         RegisterListener<Listeners.CheckTransmit>(OnCheckTransmit);
-        
+
         // Old method
         // if (Config.BlockStatusCommand)
-            // RegisterListener<Listeners.OnServerPostEntityThink>(OnServerPostEntityThink);
+        // RegisterListener<Listeners.OnServerPostEntityThink>(OnServerPostEntityThink);
 
         if (hotReload)
         {
@@ -42,12 +42,12 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
             {
                 var steamId = new SteamID(player.SteamID);
                 // if (Config.Permissions.Any(permission => AdminManager.PlayerHasPermissions(steamId, permission)))
-                    // _admins.Add(player.Slot);
+                // _admins.Add(player.Slot);
 
                 Players.Add(player);
             }
         }
-        
+
         // Old method
         // AddTimer(3, RefreshSpectatedPlayers, TimerFlags.REPEAT);
     }
@@ -64,7 +64,7 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
     //             _spectatedPlayers.Add(observer);
     //     }
     // }
-    
+
     public void OnConfigParsed(PluginConfig config)
     {
         Config = config;
@@ -76,7 +76,7 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
         {
             _sharedApi = _pluginCapability.Get();
             if (_sharedApi == null) throw new NullReferenceException("_sharedApi is null");
-            
+
             if (Config.BlockStatusCommand)
                 _sharedApi.OnAdminToggleSilent += OnAdminToggleSilent;
         }
@@ -106,7 +106,7 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
     private void OnCheckTransmit(CCheckTransmitInfoList infolist)
     {
         if (Players.Count <= 2 || _sharedApi is not null && _sharedApi.ListSilentAdminsSlots().Count == 0) return;
-        
+
         var validObserverPawns = Players
             .Select(p => new { p.Slot, ObserverPawn = p.ObserverPawn.Value })
             .Where(p => p.ObserverPawn?.IsValid == true) // safe check
@@ -125,7 +125,7 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
 
                 var observer = target.ObserverPawn;
                 if (observer == null) continue; // extra safety
-                
+
                 if (entities.Contains((int)observer.Index))
                     entities.Remove((int)observer.Index);
             }
@@ -137,36 +137,36 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
     {
         if (ShouldSuppressBroadcast(@event.Userid))
             info.DontBroadcast = true;
-        
+
         return HookResult.Continue;
     }
-    
+
     [GameEventHandler(HookMode.Pre)]
     public HookResult EventPlayerConnectFull(EventPlayerConnectFull @event, GameEventInfo info)
     {
         var player = @event.Userid;
         if (player?.IsValid != true || player.IsBot) return HookResult.Continue;
-        
+
         Players.Add(player);
-        
+
         var steamId = new SteamID(player.SteamID);
         if (!Config.Permissions.Any(permission => AdminManager.PlayerHasPermissions(steamId, permission)))
             return HookResult.Continue;
-        
+
         // _admins.Add(player.Slot);
 
         if (!Config.HideAdminsOnJoin) return HookResult.Continue;
-        
+
         AddTimer(0.75f, () =>
         {
             player.ChangeTeam(CsTeam.Spectator);
         });
-        
+
         AddTimer(1.25f, () =>
         {
             player.ExecuteClientCommandFromServer("css_hide");
         });
-        
+
         return HookResult.Continue;
     }
 
@@ -181,22 +181,22 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
 
         Players.Remove(player);
         // _admins.Remove(player.Slot);
-        
+
         if (ShouldSuppressBroadcast(@event.Userid))
-                info.DontBroadcast = true;
-        
+            info.DontBroadcast = true;
+
         return HookResult.Continue;
     }
-    
+
     [GameEventHandler(HookMode.Pre)]
     public HookResult EventPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
     {
         if (ShouldSuppressBroadcast(@event.Userid, true))
             info.DontBroadcast = true;
-        
+
         return HookResult.Continue;
     }
-    
+
     private bool ShouldSuppressBroadcast(CCSPlayerController? player, bool checkTeam = false)
     {
         if (player?.IsValid != true || player.IsBot)
@@ -206,14 +206,14 @@ public class CS2_SimpleAdmin_StealthModule: BasePlugin, IPluginConfig<PluginConf
         {
             return true;
         }
-    
+
         if (checkTeam && player.TeamNum > 1)
             return false;
 
         var steamId = new SteamID(player.SteamID);
         return Config.Permissions.Any(permission => AdminManager.PlayerHasPermissions(steamId, permission));
     }
-    
+
     // private IEnumerable<CCSPlayerController> GetNonAdmins()
     //     => Players.Where(p => !_admins.Contains(p));
-} 
+}

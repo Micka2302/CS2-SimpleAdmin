@@ -68,7 +68,7 @@ public static class PlayersMenu
                     onSelectAction(admin, player);
             },
             true,
-            freezePlayer: false,
+            freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false,
             disableDeveloper: true);
     }
 }

@@ -55,7 +55,7 @@ public static class CustomCommandsMenu
                 }
             },
             true,
-            freezePlayer: false,
+            freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false,
             disableDeveloper: true);
     }
 }

@@ -130,7 +130,7 @@ public static class ManagePlayersMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void SlapMenu(CCSPlayerController admin, CCSPlayerController player)
@@ -168,7 +168,7 @@ public static class ManagePlayersMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void ApplySlapAndKeepMenu(CCSPlayerController admin, CCSPlayerController player, int damage)
@@ -407,7 +407,7 @@ public static class ManagePlayersMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
 

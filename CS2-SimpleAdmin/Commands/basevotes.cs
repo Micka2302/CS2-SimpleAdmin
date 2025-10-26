@@ -87,9 +87,10 @@ public partial class CS2_SimpleAdmin
                             if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                             {
                                 action.Invoke();
+                                Menu.ClearMenus(player);
                             }
                         },
-                        false, freezePlayer: false, disableDeveloper: true);
+                        false, freezePlayer: Config.FreezeWhileInMenu, disableDeveloper: true);
                 }
             }
 

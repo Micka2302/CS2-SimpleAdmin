@@ -63,6 +63,6 @@ public static class AdminMenu
             {
                 menuOptionData.Action.Invoke();
             }
-        }, false, freezePlayer: false, disableDeveloper: true);
+        }, false, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 }

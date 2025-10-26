@@ -316,6 +316,9 @@ public class CS2_SimpleAdminConfig : BasePluginConfig
 
     [JsonPropertyName("BanIDBan")]
     public bool BanIDBan { get; set; } = true;
+
+    [JsonPropertyName("FreezeWhileInMenu")]
+    public bool FreezeWhileInMenu { get; set; } = false;
 }
 
 

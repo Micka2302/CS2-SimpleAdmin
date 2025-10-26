@@ -737,7 +737,7 @@ public partial class CS2_SimpleAdmin
                             action.Invoke();
                         }
                     },
-                    false, freezePlayer: false, disableDeveloper: true);
+                    false, freezePlayer: Config.FreezeWhileInMenu, disableDeveloper: true);
             };
         }
 
@@ -756,7 +756,7 @@ public partial class CS2_SimpleAdmin
                         action.Invoke();
                     }
                 },
-                false, freezePlayer: false, disableDeveloper: true);
+                false, freezePlayer: Config.FreezeWhileInMenu, disableDeveloper: true);
         }
     }
 
@@ -837,7 +837,7 @@ public partial class CS2_SimpleAdmin
                                 action.Invoke();
                             }
                         },
-                        false, freezePlayer: false, disableDeveloper: true);
+                        false, freezePlayer: Config.FreezeWhileInMenu, disableDeveloper: true);
                 });
             });
 
@@ -1287,7 +1287,7 @@ public partial class CS2_SimpleAdmin
                         action.Invoke();
                     }
                 },
-                true, freezePlayer: false, disableDeveloper: true);
+                true, freezePlayer: Config.FreezeWhileInMenu, disableDeveloper: true);
         }
 
     }

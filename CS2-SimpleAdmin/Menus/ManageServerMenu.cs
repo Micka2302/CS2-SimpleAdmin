@@ -64,7 +64,7 @@ public static class ManageServerMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void ChangeMapMenu(CCSPlayerController admin)
@@ -101,7 +101,7 @@ public static class ManageServerMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void ExecuteChangeMap(CCSPlayerController admin, string mapName, bool workshop)

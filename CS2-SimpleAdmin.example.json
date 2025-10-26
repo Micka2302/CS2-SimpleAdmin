@@ -302,5 +302,6 @@
   },
   "Statistics_Enable": true,
   "IsCSSPanel": true,
-  "BanIDBan": false
+  "BanIDBan": false,
+  "FreezeWhileInMenu": false
 }

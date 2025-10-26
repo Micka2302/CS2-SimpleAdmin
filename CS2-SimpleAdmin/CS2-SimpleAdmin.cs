@@ -116,6 +116,8 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         _logger = Logger;
         Config = config;
 
+        _config = Config;
+
         bool missing = false;
         var cssPath = Path.Combine(Server.GameDirectory, "csgo", "addons", "counterstrikesharp");
         var pluginsPath = Path.Combine(cssPath, "plugins");
