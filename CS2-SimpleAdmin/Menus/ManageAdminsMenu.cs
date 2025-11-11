@@ -11,7 +11,8 @@ public static class ManageAdminsMenu
     public static void OpenMenu(CCSPlayerController admin)
     {
         if (!admin.IsValid)
-            return;
+            if (!admin.IsValid)
+                return;
 
         var localizer = CS2_SimpleAdmin._localizer;
 
@@ -55,7 +56,7 @@ public static class ManageAdminsMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void AddAdminMenu(CCSPlayerController admin, CCSPlayerController player)
@@ -88,7 +89,7 @@ public static class ManageAdminsMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
 

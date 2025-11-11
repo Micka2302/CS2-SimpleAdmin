@@ -47,7 +47,7 @@ public static class ReasonMenu
                 }
             },
             true,
-            freezePlayer: false,
+            freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false,
             disableDeveloper: true);
     }
 
@@ -88,7 +88,7 @@ public static class ReasonMenu
                 }
             },
             true,
-            freezePlayer: false,
+            freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false,
             disableDeveloper: true);
     }
 }

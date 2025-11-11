@@ -10,7 +10,7 @@ public static class PlayersMenu
 {
     public static void OpenRealPlayersMenu(CCSPlayerController admin, string menuName, Action<CCSPlayerController, CCSPlayerController> onSelectAction, Func<CCSPlayerController, bool>? enableFilter = null)
     {
-        OpenMenu(admin, menuName, onSelectAction, p => p.IsBot == false);
+        OpenMenu(admin, menuName, onSelectAction, p => !p.IsBot);
     }
 
     public static void OpenAdminPlayersMenu(CCSPlayerController admin, string menuName, Action<CCSPlayerController, CCSPlayerController> onSelectAction, Func<CCSPlayerController?, bool>? enableFilter = null)
@@ -45,8 +45,8 @@ public static class PlayersMenu
 
             var playerName = player.PlayerName.Length > 26 ? player.PlayerName[..26] : player.PlayerName;
             var optionName = HttpUtility.HtmlEncode(playerName);
-
-            if (enableFilter != null && !enableFilter(player)) continue;
+            if (enableFilter != null && !enableFilter(player))
+                continue;
 
             bool enabled = admin.CanTarget(player);
             if (!enabled) continue; // skip disabled options
@@ -68,7 +68,7 @@ public static class PlayersMenu
                     onSelectAction(admin, player);
             },
             true,
-            freezePlayer: false,
+            freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false,
             disableDeveloper: true);
     }
 }
