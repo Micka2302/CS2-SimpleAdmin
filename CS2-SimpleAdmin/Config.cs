@@ -320,9 +320,6 @@ public class CS2_SimpleAdminConfig : BasePluginConfig
     [JsonPropertyName("IsCSSPanel")]
     public bool IsCSSPanel { get; set; } = false;
 
-    [JsonPropertyName("BanIDBan")]
-    public bool BanIDBan { get; set; } = true;
-
     [JsonPropertyName("FreezeWhileInMenu")]
     public bool FreezeWhileInMenu { get; set; } = false;
 }

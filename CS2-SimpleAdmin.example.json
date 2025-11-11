@@ -304,6 +304,5 @@
   },
   "Statistics_Enable": true,
   "IsCSSPanel": true,
-  "BanIDBan": false,
   "FreezeWhileInMenu": false
 }
