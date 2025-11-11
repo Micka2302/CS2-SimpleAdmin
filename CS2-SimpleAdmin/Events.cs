@@ -1,9 +1,9 @@
-﻿using CounterStrikeSharp.API;
+using System.Numerics;
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Entities;
-using CounterStrikeSharp.API.Modules.Utils;
 using CS2_SimpleAdmin.Managers;
 using CS2_SimpleAdmin.Models;
 using CS2_SimpleAdminApi;
@@ -16,6 +16,7 @@ using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.UserMessages;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using FixVectorLeak;
+using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CS2_SimpleAdmin;
 
@@ -25,24 +26,38 @@ public partial class CS2_SimpleAdmin
 
     private bool _serverLoading;
 
-    public List<CCSPlayerController> CachedPlayers = new();
-    
     private void RegisterEvents()
     {
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
+        // RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
         RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
+        RegisterListener<Listeners.OnClientConnected>(OnClientConnected);
         RegisterListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
-        if (Config.OtherSettings.HideStealthPlayersFromSpecList)
-            RegisterListener<Listeners.CheckTransmit>(CheckTransmitListener);
         if (Config.OtherSettings.UserMessageGagChatType)
             HookUserMessage(118, HookUmChat);
-        
+
         AddCommandListener(null, ComamndListenerHandler);
         // AddCommandListener("callvote", OnCommandCallVote);
         // AddCommandListener("say", OnCommandSay);
         // AddCommandListener("say_team", OnCommandTeamSay);
     }
-    
+
+    private void UnregisterEvents()
+    {
+        RemoveListener<Listeners.OnMapStart>(OnMapStart);
+        RemoveListener<Listeners.OnClientConnect>(OnClientConnect);
+        RemoveListener<Listeners.OnClientConnected>(OnClientConnected);
+        RemoveListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
+        if (Config.OtherSettings.UserMessageGagChatType)
+            UnhookUserMessage(118, HookUmChat);
+
+        RemoveCommandListener(null!, ComamndListenerHandler, HookMode.Pre);
+        // AddCommandListener("callvote", OnCommandCallVote);
+        // AddCommandListener("say", OnCommandSay);
+        // AddCommandListener("say_team", OnCommandTeamSay);
+    }
+
+
     // private HookResult OnCommandCallVote(CCSPlayerController? caller, CommandInfo info)
     // {
     //     var voteType = info.GetArg(1).ToLower();
@@ -62,51 +77,11 @@ public partial class CS2_SimpleAdmin
 
     private void OnGameServerSteamAPIActivated()
     {
-        if (_serverLoading)
+        if (ServerLoaded || _serverLoading)
             return;
-        
+
         _serverLoading = true;
         new ServerManager().LoadServerData();
-    }
-
-
-    private void CheckTransmitListener(CCheckTransmitInfoList infoList)
-    {
-        // Code taken from admin esp by aqua
-        foreach ((CCheckTransmitInfo info, CCSPlayerController? player) in infoList)
-        {
-            if (player is null || player.IsValid is not true) continue;
-
-            //iterate cached players
-            for (int i = 0; i < CachedPlayers.Count(); i++)
-            {
-                //leave self's observerPawn so it can spectate and check if feature is enabled
-                //we are clearing the whole spectator list as it doesn't work relaibly per person basis
-                if (CachedPlayers[i] is null || CachedPlayers[i].IsValid is not true) continue;
-
-                //check if it 'us' in the current context and do the magic only if it's not
-                if (CachedPlayers[i].Slot != player.Slot)
-                {
-
-                    //get the target's pawn
-                    var targetPawn = CachedPlayers[i].PlayerPawn.Value;
-                    if (targetPawn is null || targetPawn.IsValid is not true) continue;
-
-                    //get the target's observerpawn
-                    var targetObserverPawn = CachedPlayers[i].ObserverPawn;
-                    if (targetObserverPawn is null
-                    || targetObserverPawn.IsValid is not true
-                    || targetObserverPawn.Value is null
-                    || targetObserverPawn.Value.OriginalController.Value is null
-                    || !SilentPlayers.Contains(targetObserverPawn.Value.OriginalController.Value.Slot)) continue;
-
-                    //we clear the spec list via clearing all of the observerTarget' pawns indexes
-                    //from the Observer_services class that any cheat uses as a method to campare
-                    //against current players in the server
-                    info.TransmitEntities.Remove((int)targetObserverPawn.Index);
-                }
-            }
-        }
     }
 
     [GameEventHandler(HookMode.Pre)]
@@ -117,10 +92,29 @@ public partial class CS2_SimpleAdmin
 
         var player = @event.Userid;
 
-        if (player == null || !player.IsValid || player.IsBot)
+#if DEBUG
+        Logger.LogCritical("[OnClientDisconnect] Before");
+#endif
+
+        if (player == null || !player.IsValid || player.IsHLTV)
+            return HookResult.Continue;
+
+        BotPlayers.Remove(player);
+        CachedPlayers.Remove(player);
+
+        SilentPlayers.Remove(player.Slot);
+        GodPlayers.Remove(player.Slot);
+        SpeedPlayers.Remove(player.Slot);
+        GravityPlayers.Remove(player.Slot);
+
+        if (player.IsBot)
             return HookResult.Continue;
 
         Server.ExecuteCommand($"mm_removeexcludeslot {player.Slot}");
+
+#if DEBUG
+        Logger.LogCritical("[OnClientDisconnect] After Check");
+#endif
 
         try
         {
@@ -138,7 +132,8 @@ public partial class CS2_SimpleAdmin
             }
             else
             {
-                DisconnectedPlayers.Add(new DisconnectedPlayer(steamId, player.PlayerName, player.IpAddress?.Split(":")[0], Time.ActualDateTime()));
+                DisconnectedPlayers.Add(new DisconnectedPlayer(steamId, player.PlayerName,
+                    player.IpAddress?.Split(":")[0], Time.ActualDateTime()));
             }
 
             PlayerPenaltyManager.RemoveAllPenalties(player.Slot);
@@ -147,10 +142,10 @@ public partial class CS2_SimpleAdmin
             SilentPlayers.Remove(player.Slot);
             GodPlayers.Remove(player.Slot);
             SpeedPlayers.Remove(player.Slot);
-            GravityPlayers.Remove(player);
+            GravityPlayers.Remove(player.Slot);
 
             if (player.UserId.HasValue)
-                PlayersInfo.TryRemove(player.UserId.Value, out _);
+                PlayersInfo.TryRemove(player.SteamID, out _);
 
             if (!PermissionManager.AdminCache.TryGetValue(steamId, out var data)
                 || !(data.ExpirationTime <= Time.ActualDateTime()))
@@ -176,14 +171,23 @@ public partial class CS2_SimpleAdmin
             return HookResult.Continue;
         }
     }
-    
-    private void OnClientConnect(int playerslot, string name, string ipaddress)
+    private void OnClientConnect(int playerslot, string name, string ipAddress)
     {
-        if (Instance.CacheManager == null && Instance.BanManager == null)
+#if DEBUG
+        Logger.LogCritical("[OnClientConnect]");
+#endif
+
+        if (Instance.CacheManager != null || Instance.BanManager != null)
+        {
+            var initialIp = ipAddress.Split(':')[0];
+            EnforceBanOnConnect(playerslot, initialIp, 0);
+        }
+
+        var player = Utilities.GetPlayerFromSlot(playerslot);
+        if (player == null || !player.IsValid || player.IsBot)
             return;
 
-        var initialIp = ipaddress.Split(':')[0];
-        EnforceBanOnConnect(playerslot, initialIp, 0);
+        PlayerManager.LoadPlayerData(player);
     }
 
     private void EnforceBanOnConnect(int playerSlot, string? initialIp, int attempt)
@@ -207,12 +211,14 @@ public partial class CS2_SimpleAdmin
                 return;
 
             var steamId = player.SteamID.ToString();
+            var steamId64 = player.SteamID;
             var playerIp = player.IpAddress?.Split(':')[0] ?? initialIp;
             var config = Config.OtherSettings;
             var ipCheckEnabled = config.BanType != 0 && !string.IsNullOrWhiteSpace(playerIp);
 
-            var steamCached = cacheManager?.IsPlayerBanned(steamId, null) ?? false;
-            var ipCached = ipCheckEnabled && playerIp != null && cacheManager?.IsPlayerBanned(null, playerIp) == true;
+            var steamCached = cacheManager?.IsPlayerBanned(player.PlayerName, steamId64, null) ?? false;
+            var ipCached = ipCheckEnabled && playerIp != null &&
+                cacheManager?.IsPlayerBanned(player.PlayerName, null, playerIp) == true;
 
             var steamActive = steamCached;
             var ipActive = ipCached;
@@ -226,7 +232,7 @@ public partial class CS2_SimpleAdmin
                 catch (Exception ex)
                 {
                     CS2_SimpleAdmin._logger?.LogError("[BanCheck] Unable to validate Steam ban for {SteamId}: {ExceptionMessage}", steamId, ex.Message);
-                    steamActive = steamCached || cacheManager?.IsPlayerBanned(steamId, null) == true;
+                    steamActive = steamCached || cacheManager?.IsPlayerBanned(player.PlayerName, steamId64, null) == true;
                 }
 
                 if (ipCheckEnabled && playerIp != null)
@@ -238,7 +244,7 @@ public partial class CS2_SimpleAdmin
                     catch (Exception ex)
                     {
                         CS2_SimpleAdmin._logger?.LogError("[BanCheck] Unable to validate IP ban for {IpAddress}: {ExceptionMessage}", playerIp, ex.Message);
-                        ipActive = ipCached || cacheManager?.IsPlayerBanned(null, playerIp) == true;
+                        ipActive = ipCached || cacheManager?.IsPlayerBanned(player.PlayerName, null, playerIp) == true;
                     }
                 }
             }
@@ -287,21 +293,76 @@ public partial class CS2_SimpleAdmin
         });
     }
 
+    private void OnClientConnected(int playerslot)
+    {
+#if DEBUG
+        Logger.LogCritical("[OnClientConnected]");
+#endif
 
+        var player = Utilities.GetPlayerFromSlot(playerslot);
+        if (player == null || !player.IsValid || player.IsBot)
+            return;
+
+        PlayerManager.LoadPlayerData(player);
+    }
+
+    //     private void OnClientConnect(int playerslot, string name, string ipaddress)
+    //     {
+    // #if DEBUG
+    //         Logger.LogCritical("[OnClientConnect]");
+    // #endif
+    //         if (Config.OtherSettings.BanType == 0)
+    //             return;
+    //         
+    //         if (Instance.CacheManager != null && !Instance.CacheManager.IsPlayerBanned(null, ipaddress.Split(":")[0]))
+    //                 return;
+    //         
+    //         var testPlayer = Utilities.GetPlayerFromSlot(playerslot);
+    //         if (testPlayer == null)
+    //             return;
+    //         Logger.LogInformation($"Gracz {testPlayer.PlayerName} ({testPlayer.SteamID.ToString()}) Czas: {DateTime.Now}");
+    //
+    //         Server.NextFrame((() =>
+    //         {
+    //             var player = Utilities.GetPlayerFromSlot(playerslot);
+    //             if (player == null || !player.IsValid || player.IsBot)
+    //                 return;
+    //
+    //             Helper.KickPlayer(player, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED);
+    //         }));
+    //         
+    //         // Server.NextFrame(() =>
+    //         // {
+    //         //     var player = Utilities.GetPlayerFromSlot(playerslot);
+    //         //
+    //         //     if (player == null || !player.IsValid || player.IsBot)
+    //         //         return;
+    //         //
+    //         //     new PlayerManager().LoadPlayerData(player);
+    //         // });
+    //     }
 
     [GameEventHandler]
     public HookResult OnPlayerFullConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
         var player = @event.Userid;
 
-        if (player == null || !player.IsValid || player.IsBot)
+        if (player == null || !player.IsValid)
             return HookResult.Continue;
 
         CachedPlayers.Add(player);
 
-        new PlayerManager().LoadPlayerData(player);
+        if (player is { IsBot: true, IsHLTV: false })
+        {
+            BotPlayers.Add(player);
+            return HookResult.Continue;
+        }
 
-        if (Config.OtherSettings.HideAdminsOnJoinPermission.Count() == 0 || !Config.OtherSettings.HideAdminsOnJoinPermission.Any((string permission) => AdminManager.PlayerHasPermissions(player, permission)))
+        PlayerManager.LoadPlayerData(player, true);
+
+        var hidePermissions = Config.OtherSettings.HideAdminsOnJoinPermission;
+        if (hidePermissions.Count == 0 ||
+            !hidePermissions.Any(permission => AdminManager.PlayerHasPermissions(player, permission)))
         {
             return HookResult.Continue;
         }
@@ -336,7 +397,7 @@ public partial class CS2_SimpleAdmin
         GodPlayers.Clear();
         SpeedPlayers.Clear();
         GravityPlayers.Clear();
-        
+
         foreach (var player in PlayersInfo.Values)
         {
             player.DiePosition = null;
@@ -360,7 +421,7 @@ public partial class CS2_SimpleAdmin
 
         return HookResult.Continue;
     }
-    
+
     private HookResult HookUmChat(UserMessage um)
     {
         var author = Utilities.GetPlayerFromIndex(um.ReadInt("entityindex"));
@@ -371,25 +432,24 @@ public partial class CS2_SimpleAdmin
             !PlayerPenaltyManager.IsPenalized(author.Slot, PenaltyType.Silence, out endDateTime))
             return HookResult.Continue;
 
-        var message = um.ReadString("param2");
-
-        if (_localizer == null || endDateTime is null) return HookResult.Continue;
-
-        if (CoreConfig.PublicChatTrigger.Concat(CoreConfig.SilentChatTrigger).Any(trigger => message.StartsWith(trigger)))
-        {
-            foreach (var recipient in um.Recipients)
-            {
-                if (recipient == author)
-                    continue;
-            
-                um.Recipients.Remove(recipient);
-            }
-
+        if (_localizer == null || endDateTime == null)
             return HookResult.Continue;
+
+        var message = um.ReadString("param2");
+        var triggers = CoreConfig.PublicChatTrigger.Concat(CoreConfig.SilentChatTrigger);
+        if (!triggers.Any(trigger => message.StartsWith(trigger))) return HookResult.Stop;
+
+        for (var i = um.Recipients.Count - 1; i >= 0; i--)
+        {
+            if (um.Recipients[i] != author)
+            {
+                um.Recipients.RemoveAt(i);
+            }
         }
-        
-        author.SendLocalizedMessage(_localizer, "sa_player_penalty_chat_active", endDateTime.Value.ToString("g", author.GetLanguage()));
-        return HookResult.Stop;
+
+        return HookResult.Continue;
+
+        // author.SendLocalizedMessage(_localizer, "sa_player_penalty_chat_active", endDateTime.Value.ToString("g", author.GetLanguage()));
     }
 
     private HookResult ComamndListenerHandler(CCSPlayerController? player, CommandInfo info)
@@ -408,35 +468,43 @@ public partial class CS2_SimpleAdmin
                 AddTimer(1.0f, () => ReloadAdmins(null));
                 return HookResult.Continue;
             case "callvote":
-            {
-                var voteType = info.GetArg(1).ToLower();
-            
-                if (voteType != "kick")
-                    return HookResult.Continue;
+                {
+                    var voteType = info.GetArg(1).ToLower();
 
-                var target = int.TryParse(info.GetArg(2), out var userId) 
-                    ? Utilities.GetPlayerFromUserid(userId) 
-                    : null;
-        
-                if (target == null || !target.IsValid || target.Connected != PlayerConnectedState.PlayerConnected)
-                    return HookResult.Continue;
-                
-                return !player.CanTarget(target) ? HookResult.Stop : HookResult.Continue;
-            }
+                    if (voteType != "kick")
+                        return HookResult.Continue;
+
+                    var target = int.TryParse(info.GetArg(2), out var userId)
+                        ? Utilities.GetPlayerFromUserid(userId)
+                        : null;
+
+                    if (target == null || !target.IsValid || target.Connected != PlayerConnectedState.PlayerConnected)
+                        return HookResult.Continue;
+
+                    return !player.CanTarget(target) ? HookResult.Stop : HookResult.Continue;
+                }
         }
 
         if (!command.Contains("say"))
             return HookResult.Continue;
-        
-        if (!Config.OtherSettings.UserMessageGagChatType)
+
+        if (info.GetArg(1).Length == 0)
+            return HookResult.Stop;
+
+        var triggers = CoreConfig.PublicChatTrigger.Concat(CoreConfig.SilentChatTrigger);
+        if (triggers.Any(trigger => info.GetArg(1).StartsWith(trigger)))
         {
-            if (PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag, out DateTime? endDateTime) ||
-                PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence, out endDateTime))
-            {
-                if (_localizer != null && endDateTime is not null)
-                    player.SendLocalizedMessage(_localizer, "sa_player_penalty_chat_active", endDateTime.Value.ToString("g", player.GetLanguage()));
-                return HookResult.Stop;
-            }
+            return HookResult.Continue;
+        }
+
+        // if (!Config.OtherSettings.UserMessageGagChatType)
+        // {
+        if (PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag, out DateTime? endDateTime) ||
+            PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence, out endDateTime))
+        {
+            if (_localizer != null && endDateTime is not null)
+                player.SendLocalizedMessage(_localizer, "sa_player_penalty_chat_active", endDateTime.Value.ToString("g", player.GetLanguage()));
+            return HookResult.Stop;
         }
 
         if (string.IsNullOrWhiteSpace(info.GetArg(1))
@@ -446,19 +514,22 @@ public partial class CS2_SimpleAdmin
 
         if (info.GetArg(1).Length == 0)
             return HookResult.Stop;
-        
+
         if (command == "say" && info.GetArg(1).StartsWith($"@") &&
             AdminManager.PlayerHasPermissions(new SteamID(player.SteamID), "@css/chat"))
-        {
-            player.ExecuteClientCommandFromServer($"css_say {info.GetArg(1).Remove(0, 1)}");
-            return HookResult.Stop;
-        }
+            // }
+
+            if (AdminManager.PlayerHasPermissions(new SteamID(player.SteamID), "@css/chat") && command == "say" && info.GetArg(1).StartsWith($"@"))
+            {
+                player.ExecuteClientCommandFromServer($"css_say {info.GetArg(1).Remove(0, 1)}");
+                return HookResult.Stop;
+            }
 
         if ((command == "say" || command == "say_team") && Config.IsCSSPanel)
         {
             var message = info.GetArg(1);
 
-		    string trimmedMessage1 = message.TrimStart();
+            string trimmedMessage1 = message.TrimStart();
             string trimmedMessage = trimmedMessage1.TrimEnd();
 
             //Console.WriteLine($"{IsStringValid(trimmedMessage)} | {Config.ChatLog.ExcludeMessageContainsLessThanXLetters} | {CountLetters(trimmedMessage)}");
@@ -483,7 +554,7 @@ public partial class CS2_SimpleAdmin
                 }
             }
         }
-        
+
         if (command != "say_team" || !info.GetArg(1).StartsWith($"@")) return HookResult.Continue;
 
         StringBuilder sb = new();
@@ -568,10 +639,13 @@ public partial class CS2_SimpleAdmin
 
     private void OnMapStart(string mapName)
     {
+        if (!ServerLoaded || ServerId == null)
+            AddTimer(2.0f, OnGameServerSteamAPIActivated);
+
         if (Config.OtherSettings.ReloadAdminsEveryMapChange && ServerLoaded && ServerId != null)
             AddTimer(5.0f, () => ReloadAdmins(null));
 
-        AddTimer(1.0f, () => ServerManager.CheckHibernationStatus());
+        AddTimer(1.0f, ServerManager.CheckHibernationStatus);
 
         // AddTimer(34, () =>
         // {
@@ -595,9 +669,6 @@ public partial class CS2_SimpleAdmin
         if (player is null || @event.Attacker is null || player.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE || player.PlayerPawn.Value == null)
             return HookResult.Continue;
 
-        if (SpeedPlayers.TryGetValue(player.Slot, out var speedPlayer))
-            AddTimer(0.15f, () => player.SetSpeed(speedPlayer));
-        
         if (!GodPlayers.Contains(player.Slot)) return HookResult.Continue;
 
         player.PlayerPawn.Value.Health = player.PlayerPawn.Value.MaxHealth;
@@ -610,20 +681,19 @@ public partial class CS2_SimpleAdmin
     public HookResult OnPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
     {
         var player = @event.Userid;
-        
-        if (player?.UserId == null || !player.IsValid || player.IsHLTV || player.Connected != PlayerConnectedState.PlayerConnected)
+
+        if (player?.UserId == null || !player.IsValid || player.IsHLTV ||
+            player.Connected != PlayerConnectedState.PlayerConnected || !PlayersInfo.ContainsKey(player.SteamID) ||
+            @event.Attacker == null)
             return HookResult.Continue;
 
         SpeedPlayers.Remove(player.Slot);
-        GravityPlayers.Remove(player);
-
-        if (!PlayersInfo.ContainsKey(player.UserId.Value) || @event.Attacker == null)
-            return HookResult.Continue;
+        GravityPlayers.Remove(player.Slot);
 
         var playerPosition = player.PlayerPawn.Value?.AbsOrigin?.ToVector_t();
         var playerRotation = player.PlayerPawn.Value?.AbsRotation?.ToQAngle_t();
 
-        PlayersInfo[player.UserId.Value].DiePosition = new DiePosition(
+        PlayersInfo[player.SteamID].DiePosition = new DiePosition(
             new Vector_t(
                 playerPosition?.X ?? 0,
                 playerPosition?.Y ?? 0,
@@ -643,20 +713,16 @@ public partial class CS2_SimpleAdmin
     public HookResult OnPlayerTeam(EventPlayerTeam @event, GameEventInfo info)
     {
         var player = @event.Userid;
-
         if (player == null || !player.IsValid || player.IsBot)
             return HookResult.Continue;
 
         if (!SilentPlayers.Contains(player.Slot))
             return HookResult.Continue;
 
-        info.DontBroadcast = true;
-
-        if (@event.Team > 1)
+        if (@event is { Oldteam: <= 1, Team: >= 1 })
         {
             SilentPlayers.Remove(player.Slot);
-            Server.ExecuteCommand($"mm_removeexcludeslot {player.Slot}");
-            player.PrintToChat($"You aren't hidden now!");
+            SimpleAdminApi?.OnAdminToggleSilentEvent(player.Slot, false);
         }
 
         return HookResult.Continue;
@@ -680,6 +746,7 @@ public partial class CS2_SimpleAdmin
         return HookResult.Continue;
     }
 }
+
 
 
 

@@ -104,7 +104,7 @@ public static class FunActionsMenu
                     action.Invoke();
                 }
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void GodMode(CCSPlayerController admin, CCSPlayerController player)
@@ -156,7 +156,7 @@ public static class FunActionsMenu
                     action.Invoke();
                 }
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void GiveWeapon(CCSPlayerController admin, CCSPlayerController player, CsItem weaponValue)
@@ -225,7 +225,7 @@ public static class FunActionsMenu
                     action.Invoke();
                 }
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void SetHp(CCSPlayerController admin, CCSPlayerController player, int hp)
@@ -271,7 +271,7 @@ public static class FunActionsMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void SetSpeed(CCSPlayerController admin, CCSPlayerController player, float speed)
@@ -315,7 +315,7 @@ public static class FunActionsMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void SetGravity(CCSPlayerController admin, CCSPlayerController player, float gravity)
@@ -359,7 +359,7 @@ public static class FunActionsMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void SetMoney(CCSPlayerController admin, CCSPlayerController player, int money)

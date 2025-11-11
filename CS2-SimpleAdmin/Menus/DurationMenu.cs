@@ -38,7 +38,7 @@ public static class DurationMenu
                     action.Invoke();
                 }
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     public static void OpenMenu(CCSPlayerController admin, string menuName, DisconnectedPlayer player, Action<CCSPlayerController, DisconnectedPlayer, int> onSelectAction)
@@ -72,6 +72,6 @@ public static class DurationMenu
                     action.Invoke();
                 }
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 }

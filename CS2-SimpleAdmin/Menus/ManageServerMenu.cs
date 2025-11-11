@@ -14,11 +14,12 @@ public static class ManageServerMenu
 
         var localizer = CS2_SimpleAdmin._localizer;
         if (!AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/generic"))
-        {
-            admin.PrintToChat(localizer?["sa_prefix"] ?? "[SimpleAdmin] " +
-                            (localizer?["sa_no_permission"] ?? "You do not have permissions to use this command"));
-            return;
-        }
+            if (!AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/generic"))
+            {
+                admin.PrintToChat(localizer?["sa_prefix"] ?? "[SimpleAdmin] " +
+                                (localizer?["sa_no_permission"] ?? "You do not have permissions to use this command"));
+                return;
+            }
 
         string menuTitle = localizer?["sa_menu_server_manage"] ?? "Server Manage";
         List<MenuItem> items = new();
@@ -63,7 +64,7 @@ public static class ManageServerMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void ChangeMapMenu(CCSPlayerController admin)
@@ -100,7 +101,7 @@ public static class ManageServerMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void ExecuteChangeMap(CCSPlayerController admin, string mapName, bool workshop)

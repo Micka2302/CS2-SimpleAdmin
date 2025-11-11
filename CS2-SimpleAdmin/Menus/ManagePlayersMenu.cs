@@ -16,11 +16,12 @@ public static class ManagePlayersMenu
 
         var localizer = CS2_SimpleAdmin._localizer;
         if (!AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/generic"))
-        {
-            admin.PrintToChat(localizer?["sa_prefix"] ?? "[SimpleAdmin] " +
-                            (localizer?["sa_no_permission"] ?? "You do not have permissions to use this command"));
-            return;
-        }
+            if (!AdminManager.PlayerHasPermissions(new SteamID(admin.SteamID), "@css/generic"))
+            {
+                admin.PrintToChat(localizer?["sa_prefix"] ?? "[SimpleAdmin] " +
+                                (localizer?["sa_no_permission"] ?? "You do not have permissions to use this command"));
+                return;
+            }
 
         var menuTitle = localizer?["sa_menu_players_manage"] ?? "Manage Players";
         List<MenuItem> items = new();
@@ -129,7 +130,7 @@ public static class ManagePlayersMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void SlapMenu(CCSPlayerController admin, CCSPlayerController player)
@@ -167,7 +168,7 @@ public static class ManagePlayersMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
     private static void ApplySlapAndKeepMenu(CCSPlayerController admin, CCSPlayerController player, int damage)
@@ -406,7 +407,7 @@ public static class ManagePlayersMenu
                 if (buttons == MenuButtons.Select && optionMap.TryGetValue(menu.Option, out var action))
                     action.Invoke();
             },
-            true, freezePlayer: false, disableDeveloper: true);
+            true, freezePlayer: CS2_SimpleAdmin._config?.FreezeWhileInMenu ?? false, disableDeveloper: true);
     }
 
 
