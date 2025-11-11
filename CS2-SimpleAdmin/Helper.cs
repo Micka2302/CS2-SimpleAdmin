@@ -1024,22 +1024,22 @@ public static class Time
         string timezoneId = CS2_SimpleAdmin.Instance.Config.Timezone;
         DateTime utcNow = DateTime.UtcNow;
 
-        // try
-        // {
-        //     TimeZoneInfo timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
-        //     DateTime userTime = TimeZoneInfo.ConvertTimeFromUtc(utcNow, timezone);
-        //     return userTime;
-        // }
-        // catch (TimeZoneNotFoundException)
-        // {
-        //     CS2_SimpleAdmin._logger?.LogWarning($"Time zone '{timezoneId}' not found. Returning UTC time.");
-        //     return utcNow;
-        // }
-        // catch (InvalidTimeZoneException)
-        // {
-        //     CS2_SimpleAdmin._logger?.LogWarning($"Time zone '{timezoneId}' is invalid. Returning UTC time.");
-        //     return utcNow;
-        // }
+        try
+        {
+            TimeZoneInfo timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
+            DateTime userTime = TimeZoneInfo.ConvertTimeFromUtc(utcNow, timezone);
+            return userTime;
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            CS2_SimpleAdmin._logger?.LogWarning($"Time zone '{timezoneId}' not found. Returning UTC time.");
+            return utcNow;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            CS2_SimpleAdmin._logger?.LogWarning($"Time zone '{timezoneId}' is invalid. Returning UTC time.");
+            return utcNow;
+        }
     }
 }
 
