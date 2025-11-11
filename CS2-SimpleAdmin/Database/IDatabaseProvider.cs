@@ -13,6 +13,9 @@ public interface IDatabaseProvider
     string GetIpHistoryQuery();
     string GetBanUpdateQuery(bool multiServer);
 
+    // PlayerManager
+    string GetUpsertPlayerIpQuery();
+
     // PermissionManager
     string GetAdminsQuery();
     string GetAdminsQuery_CSS();

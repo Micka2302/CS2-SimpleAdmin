@@ -90,7 +90,7 @@ internal static class Helper
 
     public static List<CCSPlayerController> GetValidPlayers()
     {
-        return CS2_SimpleAdmin.CachedPlayers.AsValueEnumerable().ToList();
+        return CS2_SimpleAdmin.CachedPlayers.AsValueEnumerable().Where(p => p.Connected == PlayerConnectedState.PlayerConnected).ToList();
     }
 
     public static List<CCSPlayerController> GetValidPlayersWithBots()
@@ -443,7 +443,7 @@ internal static class Helper
 
         var communityUrl = caller != null ? "<" + new SteamID(caller.SteamID).ToCommunityUrl() + ">" : "<https://steamcommunity.com/profiles/0>";
         var callerName = caller != null ? caller.PlayerName : CS2_SimpleAdmin._localizer?["sa_console"] ?? "Console";
-        _ = CS2_SimpleAdmin.DiscordWebhookClientLog.SendMessageAsync(Helper.GenerateMessageDiscord(localizer["sa_discord_log_command", $"[{callerName}]({communityUrl})", command.GetCommandString]));
+        _ = CS2_SimpleAdmin.DiscordWebhookClientLog.SendMessageAsync(GenerateMessageDiscord(localizer["sa_discord_log_command", $"[{callerName}]({communityUrl})", command.GetCommandString]));
     }
 
     private static void SendDiscordLogMessage(CCSPlayerController? caller, string command, IStringLocalizer? localizer)
@@ -610,20 +610,25 @@ internal static class Helper
     {
         if (CS2_SimpleAdmin._localizer == null) return;
 
+        // Determine the localized message key
         var localizedMessageKey = $"{messageKey}";
 
         var formattedMessageArgs = messageArgs.Select(arg => arg?.ToString() ?? string.Empty).ToArray();
 
+        // Replace placeholder based on showActivityType
         for (var i = 0; i < formattedMessageArgs.Length; i++)
         {
-            var arg = formattedMessageArgs[i];
+            var arg = formattedMessageArgs[i]; // Convert argument to string if not null
+            // Replace "CALLER" placeholder in the argument string
             formattedMessageArgs[i] = CS2_SimpleAdmin.Instance.Config.OtherSettings.ShowActivityType switch
             {
                 1 => arg.Replace("CALLER", CS2_SimpleAdmin._localizer["sa_admin"]),
+                2 => arg.Replace("CALLER", callerName ?? "Console"),
                 _ => arg
             };
         }
 
+        // Print the localized message to the center of the screen for the player
         using (new WithTemporaryCulture(player.GetLanguage()))
         {
             player.PrintToCenter(CS2_SimpleAdmin._localizer[localizedMessageKey, formattedMessageArgs.Cast<object>().ToArray()]);
@@ -1013,9 +1018,11 @@ public static class Time
 {
     public static DateTime ActualDateTime()
     {
-        return DateTime.UtcNow;
-        // string timezoneId = CS2_SimpleAdmin.Instance.Config.Timezone;
-        // DateTime utcNow = DateTime.UtcNow;
+        if (CS2_SimpleAdmin.Instance.Config.DatabaseConfig.DatabaseType.ToLower().Equals("sqlite"))
+            return DateTime.UtcNow;
+
+        string timezoneId = CS2_SimpleAdmin.Instance.Config.Timezone;
+        DateTime utcNow = DateTime.UtcNow;
 
         // try
         // {
