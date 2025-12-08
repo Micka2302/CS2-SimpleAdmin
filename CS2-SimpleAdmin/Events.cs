@@ -25,7 +25,6 @@ public partial class CS2_SimpleAdmin
     {
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         // RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
-        RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
         RegisterListener<Listeners.OnClientConnected>(OnClientConnected);
         RegisterListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
         if (Config.OtherSettings.UserMessageGagChatType)
@@ -79,7 +78,7 @@ public partial class CS2_SimpleAdmin
         new ServerManager().LoadServerData();
     }
 
-    [GameEventHandler(HookMode.Pre)]
+    [GameEventHandler]
     public HookResult OnClientDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
         if (@event.Reason is 149 or 6)
@@ -94,16 +93,17 @@ public partial class CS2_SimpleAdmin
         if (player == null || !player.IsValid || player.IsHLTV)
             return HookResult.Continue;
 
-        BotPlayers.Remove(player);
         CachedPlayers.Remove(player);
-
+        BotPlayers.Remove(player);
         SilentPlayers.Remove(player.Slot);
         GodPlayers.Remove(player.Slot);
         SpeedPlayers.Remove(player.Slot);
         GravityPlayers.Remove(player.Slot);
 
         if (player.IsBot)
+        {
             return HookResult.Continue;
+        }
 
 #if DEBUG
         Logger.LogCritical("[OnClientDisconnect] After Check");
@@ -188,6 +188,9 @@ public partial class CS2_SimpleAdmin
         if (player == null || !player.IsValid || player.IsBot)
             return;
 
+        if (!CachedPlayers.Contains(player))
+            CachedPlayers.Add(player);
+
         PlayerManager.LoadPlayerData(player);
     }
 
@@ -238,8 +241,6 @@ public partial class CS2_SimpleAdmin
 
         if (player == null || !player.IsValid)
             return HookResult.Continue;
-
-        CachedPlayers.Add(player);
 
         if (player is { IsBot: true, IsHLTV: false })
         {
@@ -566,17 +567,13 @@ public partial class CS2_SimpleAdmin
     public HookResult OnPlayerTeam(EventPlayerTeam @event, GameEventInfo info)
     {
         var player = @event.Userid;
-        if (player == null || !player.IsValid || player.IsBot)
+        if (player == null || !player.IsValid || player.IsBot || !SilentPlayers.Contains(player.Slot))
             return HookResult.Continue;
 
-        if (!SilentPlayers.Contains(player.Slot))
-            return HookResult.Continue;
+        if (@event is not { Oldteam: <= 1, Team: >= 1 }) return HookResult.Continue;
 
-        if (@event is { Oldteam: <= 1, Team: >= 1 })
-        {
-            SilentPlayers.Remove(player.Slot);
-            SimpleAdminApi?.OnAdminToggleSilentEvent(player.Slot, false);
-        }
+        SilentPlayers.Remove(player.Slot);
+        SimpleAdminApi?.OnAdminToggleSilentEvent(player.Slot, false);
 
         return HookResult.Continue;
     }

@@ -13,7 +13,7 @@ namespace CS2_SimpleAdmin.Managers;
 
 internal class PlayerManager
 {
-    private readonly SemaphoreSlim _loadPlayerSemaphore = new(5);
+    private readonly SemaphoreSlim _loadPlayerSemaphore = new(10);
     private readonly CS2_SimpleAdminConfig _config = CS2_SimpleAdmin.Instance.Config;
 
     /// <summary>
@@ -51,7 +51,6 @@ internal class PlayerManager
             try
             {
                 await _loadPlayerSemaphore.WaitAsync();
-
                 if (!CS2_SimpleAdmin.PlayersInfo.ContainsKey(steamId))
                 {
                     var isBanned = CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType switch
@@ -81,13 +80,7 @@ internal class PlayerManager
                 {
                     var playerInfo = new PlayerInfo(userId, slot, new SteamID(steamId), playerName, ipAddress);
                     CS2_SimpleAdmin.PlayersInfo[steamId] = playerInfo;
-
-                    await Server.NextWorldUpdateAsync(() =>
-                    {
-                        if (!CS2_SimpleAdmin.CachedPlayers.Contains(player))
-                            CS2_SimpleAdmin.CachedPlayers.Add(player);
-                    });
-
+                    
                     if (_config.OtherSettings.CheckMultiAccountsByIp && ipAddress != null &&
                         CS2_SimpleAdmin.PlayersInfo[steamId] != null)
                     {
@@ -254,6 +247,7 @@ internal class PlayerManager
                 _loadPlayerSemaphore.Release();
             }
         });
+        
         if (CS2_SimpleAdmin.RenamedPlayers.TryGetValue(player.SteamID, out var name))
         {
             player.Rename(name);
@@ -320,9 +314,6 @@ internal class PlayerManager
 
             // Optimization: Get players once and avoid allocating anonymous types
             var validPlayers = Helper.GetValidPlayers();
-            if (validPlayers.Count == 0)
-                return;
-
             // Use ValueTuple instead of anonymous type - better performance and less allocations
             var tempPlayers = new List<(string PlayerName, ulong SteamID, string? IpAddress, int? UserId, int Slot)>(validPlayers.Count);
             foreach (var p in validPlayers)
