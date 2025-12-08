@@ -13,7 +13,6 @@ using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.UserMessages;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
-using FixVectorLeak;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CS2_SimpleAdmin;
@@ -555,20 +554,9 @@ public partial class CS2_SimpleAdmin
         SpeedPlayers.Remove(player.Slot);
         GravityPlayers.Remove(player.Slot);
 
-        var playerPosition = player.PlayerPawn.Value?.AbsOrigin?.ToVector_t();
-        var playerRotation = player.PlayerPawn.Value?.AbsRotation?.ToQAngle_t();
-
         PlayersInfo[player.SteamID].DiePosition = new DiePosition(
-            new Vector_t(
-                playerPosition?.X ?? 0,
-                playerPosition?.Y ?? 0,
-                playerPosition?.Z ?? 0
-            ),
-            new QAngle_t(
-                playerRotation?.X ?? 0,
-                playerRotation?.Y ?? 0,
-                playerRotation?.Z ?? 0
-            )
+            (Vector3)player.PlayerPawn.Value?.AbsOrigin!,
+            (Vector3)player.PlayerPawn.Value?.AbsRotation!
         );
 
         return HookResult.Continue;
