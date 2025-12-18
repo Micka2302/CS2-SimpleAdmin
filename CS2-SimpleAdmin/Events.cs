@@ -15,7 +15,6 @@ using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.UserMessages;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
-using FixVectorLeak;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CS2_SimpleAdmin;
@@ -30,7 +29,6 @@ public partial class CS2_SimpleAdmin
     {
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         // RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
-        RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
         RegisterListener<Listeners.OnClientConnected>(OnClientConnected);
         RegisterListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
         if (Config.OtherSettings.UserMessageGagChatType)
@@ -84,7 +82,7 @@ public partial class CS2_SimpleAdmin
         new ServerManager().LoadServerData();
     }
 
-    [GameEventHandler(HookMode.Pre)]
+    [GameEventHandler]
     public HookResult OnClientDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
         if (@event.Reason is 149 or 6)
@@ -99,16 +97,17 @@ public partial class CS2_SimpleAdmin
         if (player == null || !player.IsValid || player.IsHLTV)
             return HookResult.Continue;
 
-        BotPlayers.Remove(player);
         CachedPlayers.Remove(player);
-
+        BotPlayers.Remove(player);
         SilentPlayers.Remove(player.Slot);
         GodPlayers.Remove(player.Slot);
         SpeedPlayers.Remove(player.Slot);
         GravityPlayers.Remove(player.Slot);
 
         if (player.IsBot)
+        {
             return HookResult.Continue;
+        }
 
         Server.ExecuteCommand($"mm_removeexcludeslot {player.Slot}");
 
@@ -303,6 +302,9 @@ public partial class CS2_SimpleAdmin
         if (player == null || !player.IsValid || player.IsBot)
             return;
 
+        if (!CachedPlayers.Contains(player))
+            CachedPlayers.Add(player);
+
         PlayerManager.LoadPlayerData(player);
     }
 
@@ -349,8 +351,6 @@ public partial class CS2_SimpleAdmin
 
         if (player == null || !player.IsValid)
             return HookResult.Continue;
-
-        CachedPlayers.Add(player);
 
         if (player is { IsBot: true, IsHLTV: false })
         {
@@ -690,20 +690,9 @@ public partial class CS2_SimpleAdmin
         SpeedPlayers.Remove(player.Slot);
         GravityPlayers.Remove(player.Slot);
 
-        var playerPosition = player.PlayerPawn.Value?.AbsOrigin?.ToVector_t();
-        var playerRotation = player.PlayerPawn.Value?.AbsRotation?.ToQAngle_t();
-
         PlayersInfo[player.SteamID].DiePosition = new DiePosition(
-            new Vector_t(
-                playerPosition?.X ?? 0,
-                playerPosition?.Y ?? 0,
-                playerPosition?.Z ?? 0
-            ),
-            new QAngle_t(
-                playerRotation?.X ?? 0,
-                playerRotation?.Y ?? 0,
-                playerRotation?.Z ?? 0
-            )
+            (Vector3)player.PlayerPawn.Value?.AbsOrigin!,
+            (Vector3)player.PlayerPawn.Value?.AbsRotation!
         );
 
         return HookResult.Continue;
@@ -713,17 +702,13 @@ public partial class CS2_SimpleAdmin
     public HookResult OnPlayerTeam(EventPlayerTeam @event, GameEventInfo info)
     {
         var player = @event.Userid;
-        if (player == null || !player.IsValid || player.IsBot)
+        if (player == null || !player.IsValid || player.IsBot || !SilentPlayers.Contains(player.Slot))
             return HookResult.Continue;
 
-        if (!SilentPlayers.Contains(player.Slot))
-            return HookResult.Continue;
+        if (@event is not { Oldteam: <= 1, Team: >= 1 }) return HookResult.Continue;
 
-        if (@event is { Oldteam: <= 1, Team: >= 1 })
-        {
-            SilentPlayers.Remove(player.Slot);
-            SimpleAdminApi?.OnAdminToggleSilentEvent(player.Slot, false);
-        }
+        SilentPlayers.Remove(player.Slot);
+        SimpleAdminApi?.OnAdminToggleSilentEvent(player.Slot, false);
 
         return HookResult.Continue;
     }

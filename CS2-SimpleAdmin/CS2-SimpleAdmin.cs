@@ -27,7 +27,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
     public override string ModuleName => "CS2-SimpleAdmin" + (Helper.IsDebugBuild ? " (DEBUG)" : " (RELEASE)");
     public override string ModuleDescription => "Simple admin plugin for Counter-Strike 2 :)";
     public override string ModuleAuthor => "daffyy, Dliix66, ShiNxz & Cruze, Micka2302";
-    public override string ModuleVersion => "1.7.8-beta-5.1";
+    public override string ModuleVersion => "1.7.8-beta-7";
 
     public override void Load(bool hotReload)
     {
@@ -56,7 +56,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
                 CachedPlayers.Clear();
                 BotPlayers.Clear();
 
-                foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsHLTV).ToArray())
+                foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected && !p.IsHLTV).ToArray())
                 {
                     if (!player.IsBot)
                         PlayerManager.LoadPlayerData(player, true);
@@ -80,13 +80,10 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
     public override void OnAllPluginsLoaded(bool hotReload)
     {
-        AddTimer(6.0f, () =>
-        {
-            if (!ServerLoaded)
-            {
-                ReloadAdmins(null);
-            }
-        });
+        AddTimer(6.0f, () => ReloadAdmins(null));
+        RegisterEvents();
+
+        new PlayerManager().CheckPlayersTimer();
 
         ChatManager = new ChatManager();
 
@@ -94,6 +91,12 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
         if (!CoreConfig.UnlockConCommands)
         {
+            _logger?.LogError(
+                $"⚠️ Warning: 'UnlockConCommands' is disabled in core.json. " +
+                $"Players will not be automatically banned when kicked and will be able " +
+                $"to rejoin the server for 60 seconds. " +
+                $"To enable instant banning, set 'UnlockConCommands': true"
+            );
             _logger?.LogError(
                 $"⚠️ Warning: 'UnlockConCommands' is disabled in core.json. " +
                 $"Players will not be automatically banned when kicked and will be able " +
@@ -261,6 +264,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         CacheManager = null;
         PlayersTimer?.Kill();
         PlayersTimer = null;
+
         UnregisterEvents();
 
         if (hotReload)

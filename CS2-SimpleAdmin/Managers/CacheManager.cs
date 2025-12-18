@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using CS2_SimpleAdmin.Database;
 using CS2_SimpleAdmin.Models;
 using Dapper;
+using Microsoft.Extensions.Logging;
 using ZLinq;
 
 namespace CS2_SimpleAdmin.Managers;
@@ -16,6 +17,7 @@ internal class CacheManager : IDisposable
     private HashSet<uint> _cachedIgnoredIps = [];
 
     private DateTime _lastUpdateTime = DateTime.MinValue;
+    private DateTime? _lastDatabaseTime = null; // Track actual time from database
     private bool _isInitialized;
     private bool _disposed;
 
@@ -156,13 +158,20 @@ internal class CacheManager : IDisposable
             await using var connection = await CS2_SimpleAdmin.DatabaseProvider.CreateConnectionAsync();
             IEnumerable<BanRecord> updatedBans;
 
+            // Get current time from database in local timezone (CURRENT_TIMESTAMP uses session timezone, not UTC)
+            var currentDatabaseTime = await connection.QueryFirstAsync<DateTime>("SELECT CURRENT_TIMESTAMP");
+
             // Optimization: Only get IDs for comparison if we need to check for deletions
             // Most of the time bans are just added/updated, not deleted
             HashSet<int>? allIds = null;
 
             if (CS2_SimpleAdmin.Instance.Config.MultiServerMode)
             {
-                updatedBans = (await connection.QueryAsync<BanRecord>(
+                // Use previous database time or start from far past if first run
+                var lastCheckTime = _lastDatabaseTime ?? DateTime.MinValue;
+
+                // Get recently updated bans by timestamp (using database time to avoid timezone issues)
+                var updatedBans_Query = (await connection.QueryAsync<BanRecord>(
                     """
                     SELECT id AS Id,
                     player_name AS PlayerName,
@@ -171,33 +180,68 @@ internal class CacheManager : IDisposable
                     status AS Status
                     FROM `sa_bans` WHERE updated_at > @lastUpdate OR created > @lastUpdate ORDER BY updated_at DESC
                     """,
-                    new { lastUpdate = _lastUpdateTime }
-                ));
+                    new { lastUpdate = lastCheckTime }
+                )).ToList();
 
-                // Optimization: Only fetch all IDs if there were updates
-                var updatedList = updatedBans.ToList();
+                // Detect changes: new bans or status changes
+                var updatedList = new List<BanRecord>();
+                foreach (var ban in updatedBans_Query)
+                {
+                    if (!_banCache.TryGetValue(ban.Id, out var cachedBan))
+                    {
+                        // New ban
+                        updatedList.Add(ban);
+                    }
+                    else if (cachedBan.Status != ban.Status)
+                    {
+                        // Status changed
+                        updatedList.Add(ban);
+                    }
+                }
+
                 if (updatedList.Count > 0)
                 {
                     allIds = (await connection.QueryAsync<int>("SELECT id FROM sa_bans")).ToHashSet();
                 }
                 updatedBans = updatedList;
+
+                // Update last check time to current database time
+                _lastDatabaseTime = currentDatabaseTime;
             }
             else
             {
-                updatedBans = (await connection.QueryAsync<BanRecord>(
+                // Use previous database time or start from far past if first run
+                var lastCheckTime = _lastDatabaseTime ?? DateTime.MinValue;
+
+                // Get recently updated bans for this server by timestamp (using database time to avoid timezone issues)
+                var updatedBans_Query = (await connection.QueryAsync<BanRecord>(
                     """
                     SELECT id AS Id,
                     player_name AS PlayerName,
                     player_steamid AS PlayerSteamId,
                     player_ip AS PlayerIp,
                     status AS Status
-                    FROM `sa_bans` WHERE (updated_at > @lastUpdate OR created > @lastUpdate) AND server_id = @serverId ORDER BY updated_at DESC
+                    FROM `sa_bans` WHERE server_id = @serverId AND (updated_at > @lastUpdate OR created > @lastUpdate) ORDER BY updated_at DESC
                     """,
-                    new { lastUpdate = _lastUpdateTime, serverId = CS2_SimpleAdmin.ServerId }
-                ));
+                    new { serverId = CS2_SimpleAdmin.ServerId, lastUpdate = lastCheckTime }
+                )).ToList();
 
-                // Optimization: Only fetch all IDs if there were updates
-                var updatedList = updatedBans.ToList();
+                // Detect changes: new bans or status changes
+                var updatedList = new List<BanRecord>();
+                foreach (var ban in updatedBans_Query)
+                {
+                    if (!_banCache.TryGetValue(ban.Id, out var cachedBan))
+                    {
+                        // New ban
+                        updatedList.Add(ban);
+                    }
+                    else if (cachedBan.Status != ban.Status)
+                    {
+                        // Status changed
+                        updatedList.Add(ban);
+                    }
+                }
+
                 if (updatedList.Count > 0)
                 {
                     allIds = (await connection.QueryAsync<int>(
@@ -206,6 +250,9 @@ internal class CacheManager : IDisposable
                     )).ToHashSet();
                 }
                 updatedBans = updatedList;
+
+                // Update last check time to current database time
+                _lastDatabaseTime = currentDatabaseTime;
             }
 
             // Optimization: Only process deletions if we have the full ID list
@@ -276,16 +323,19 @@ internal class CacheManager : IDisposable
             }
 
             // Update cache with new/modified bans
-            var hasUpdates = false;
+            var needsRebuild = false;
             foreach (var ban in updatedBans)
             {
+                if (_banCache.TryGetValue(ban.Id, out var oldBan) && oldBan.Status != ban.Status)
+                {
+                    // Ban status changed (e.g., ACTIVE -> EXPIRED/UNBANNED), need to rebuild indexes
+                    needsRebuild = true;
+                }
                 _banCache.AddOrUpdate(ban.Id, ban, (_, _) => ban);
-                hasUpdates = true;
             }
 
-            // Always rebuild indexes if there were any updates
-            // This ensures status changes (ACTIVE -> UNBANNED) are reflected
-            if (hasUpdates)
+            // Rebuild indexes if there were updates or status changes
+            if (updatedBans.Any() || needsRebuild)
             {
                 RebuildIndexes();
             }
@@ -459,6 +509,11 @@ internal class CacheManager : IDisposable
 
         record = ipRecords.FirstOrDefault(r => r.StatusEnum == BanStatus.ACTIVE);
         if (record == null) return false;
+
+        // Double-check the ban is still active in cache (handle race conditions)
+        if (!_banCache.TryGetValue(record.Id, out var cachedBanIp) || cachedBanIp.StatusEnum != BanStatus.ACTIVE)
+            return false;
+
         if ((string.IsNullOrEmpty(record.PlayerIp) && !string.IsNullOrEmpty(ipAddress)) ||
             (!record.PlayerSteamId.HasValue && steamId.HasValue))
         {
@@ -557,7 +612,7 @@ internal class CacheManager : IDisposable
             }
         }
 
-        if (CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType == 0)
+        if (CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType == 0 || string.IsNullOrEmpty(ipAddress))
             return false;
 
         if (!_playerIpsCache.TryGetValue(steamId, out var ipData))
@@ -584,6 +639,10 @@ internal class CacheManager : IDisposable
 
             var activeBan = banRecords.FirstOrDefault(r => r.StatusEnum == BanStatus.ACTIVE);
             if (activeBan == null)
+                continue;
+
+            // Double-check the ban is still active in cache (handle race conditions)
+            if (!_banCache.TryGetValue(activeBan.Id, out var cachedBan) || cachedBan.StatusEnum != BanStatus.ACTIVE)
                 continue;
 
             if (string.IsNullOrEmpty(activeBan.PlayerName))
