@@ -13,7 +13,7 @@ namespace CS2_SimpleAdmin.Managers;
 
 internal class PlayerManager
 {
-    private readonly SemaphoreSlim _loadPlayerSemaphore = new(5);
+    private readonly SemaphoreSlim _loadPlayerSemaphore = new(10);
     private readonly CS2_SimpleAdminConfig _config = CS2_SimpleAdmin.Instance.Config;
 
     /// <summary>
@@ -51,7 +51,6 @@ internal class PlayerManager
             try
             {
                 await _loadPlayerSemaphore.WaitAsync();
-
                 if (!CS2_SimpleAdmin.PlayersInfo.ContainsKey(steamId))
                 {
                     var isBanned = CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType switch
@@ -272,6 +271,7 @@ internal class PlayerManager
                 _loadPlayerSemaphore.Release();
             }
         });
+        
         if (CS2_SimpleAdmin.RenamedPlayers.TryGetValue(player.SteamID, out var name))
         {
             player.Rename(name);
@@ -338,15 +338,11 @@ internal class PlayerManager
 
             // Optimization: Get players once and avoid allocating anonymous types
             var validPlayers = Helper.GetValidPlayers();
-
             // Use ValueTuple instead of anonymous type - better performance and less allocations
             var tempPlayers = new List<(string PlayerName, ulong SteamID, string? IpAddress, int? UserId, int Slot)>(validPlayers.Count);
-            if (validPlayers.Count > 0)
+            foreach (var p in validPlayers)
             {
-                foreach (var p in validPlayers)
-                {
-                    tempPlayers.Add((p.PlayerName, p.SteamID, p.IpAddress, p.UserId, p.Slot));
-                }
+                tempPlayers.Add((p.PlayerName, p.SteamID, p.IpAddress, p.UserId, p.Slot));
             }
 
             var pluginInstance = CS2_SimpleAdmin.Instance;

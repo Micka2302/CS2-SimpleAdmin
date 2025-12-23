@@ -33,7 +33,7 @@ internal class WarnManager(IDatabaseProvider? databaseProvider)
                 playerName = player.Name,
                 adminSteamid = issuer?.SteamId.SteamId64 ?? 0,
                 adminName = issuer?.Name ?? CS2_SimpleAdmin._localizer?["sa_console"] ?? "Console",
-                muteReason = reason,
+                warnReason = reason,
                 duration = time,
                 ends = futureTime,
                 created = now,
@@ -42,8 +42,9 @@ internal class WarnManager(IDatabaseProvider? databaseProvider)
 
             return warnId;
         }
-        catch
+        catch(Exception e)
         {
+            CS2_SimpleAdmin._logger?.LogError("Unable to add warn for {Player} ({SteamId}): {Message}", player.Name, player.SteamId.SteamId64, e.Message);
             return null;
         }
     }
@@ -73,7 +74,7 @@ internal class WarnManager(IDatabaseProvider? databaseProvider)
                 playerSteamid = playerSteamId,
                 adminSteamid = issuer?.SteamId.SteamId64 ?? 0,
                 adminName = issuer?.Name ?? CS2_SimpleAdmin._localizer?["sa_console"] ?? "Console",
-                muteReason = reason,
+                warnReason = reason,
                 duration = time,
                 ends = futureTime,
                 created = now,

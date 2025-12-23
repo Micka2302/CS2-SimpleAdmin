@@ -15,7 +15,6 @@ using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.UserMessages;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
-using FixVectorLeak;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CS2_SimpleAdmin;
@@ -25,11 +24,29 @@ public partial class CS2_SimpleAdmin
     private const int MaxBanConnectAttempts = 10;
 
     private bool _serverLoading;
+    
+    private void BanCheckLog(LogLevel level, string message)
+    {
+        // Mirror BanCheck messages to console even if log level is higher
+        switch (level)
+        {
+            case LogLevel.Error:
+                _logger?.LogError(message);
+                break;
+            case LogLevel.Warning:
+                _logger?.LogWarning(message);
+                break;
+            default:
+                _logger?.LogInformation(message);
+                break;
+        }
+
+        Server.PrintToConsole(message);
+    }
 
     private void RegisterEvents()
     {
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
-        // RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
         RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
         RegisterListener<Listeners.OnClientConnected>(OnClientConnected);
         RegisterListener<Listeners.OnGameServerSteamAPIActivated>(OnGameServerSteamAPIActivated);
@@ -84,7 +101,7 @@ public partial class CS2_SimpleAdmin
         new ServerManager().LoadServerData();
     }
 
-    [GameEventHandler(HookMode.Pre)]
+    [GameEventHandler]
     public HookResult OnClientDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
         if (@event.Reason is 149 or 6)
@@ -99,16 +116,17 @@ public partial class CS2_SimpleAdmin
         if (player == null || !player.IsValid || player.IsHLTV)
             return HookResult.Continue;
 
-        BotPlayers.Remove(player);
         CachedPlayers.Remove(player);
-
+        BotPlayers.Remove(player);
         SilentPlayers.Remove(player.Slot);
         GodPlayers.Remove(player.Slot);
         SpeedPlayers.Remove(player.Slot);
         GravityPlayers.Remove(player.Slot);
 
         if (player.IsBot)
+        {
             return HookResult.Continue;
+        }
 
         Server.ExecuteCommand($"mm_removeexcludeslot {player.Slot}");
 
@@ -200,7 +218,7 @@ public partial class CS2_SimpleAdmin
                 if (attempt < MaxBanConnectAttempts)
                     AddTimer(0.1f, () => EnforceBanOnConnect(playerSlot, initialIp, attempt + 1));
                 else
-                    CS2_SimpleAdmin._logger?.LogWarning("[BanCheck] Unable to resolve player in slot {Slot} after {Attempts} attempts.", playerSlot, attempt);
+                    BanCheckLog(LogLevel.Warning, $"[BanCheck] Unable to resolve player in slot {playerSlot} after {attempt} attempts.");
                 return;
             }
 
@@ -231,7 +249,7 @@ public partial class CS2_SimpleAdmin
                 }
                 catch (Exception ex)
                 {
-                    CS2_SimpleAdmin._logger?.LogError("[BanCheck] Unable to validate Steam ban for {SteamId}: {ExceptionMessage}", steamId, ex.Message);
+                    BanCheckLog(LogLevel.Error, $"[BanCheck] Unable to validate Steam ban for {steamId}: {ex.Message}");
                     steamActive = steamCached || cacheManager?.IsPlayerBanned(player.PlayerName, steamId64, null) == true;
                 }
 
@@ -243,26 +261,23 @@ public partial class CS2_SimpleAdmin
                     }
                     catch (Exception ex)
                     {
-                        CS2_SimpleAdmin._logger?.LogError("[BanCheck] Unable to validate IP ban for {IpAddress}: {ExceptionMessage}", playerIp, ex.Message);
+                        BanCheckLog(LogLevel.Error, $"[BanCheck] Unable to validate IP ban for {playerIp}: {ex.Message}");
                         ipActive = ipCached || cacheManager?.IsPlayerBanned(player.PlayerName, null, playerIp) == true;
                     }
                 }
             }
 
-            CS2_SimpleAdmin._logger?.LogInformation(
-                "[BanCheck] Player {PlayerName} ({SteamId}) - Steam banned: {SteamBanned}, IP banned: {IpBanned}, IP: {IpAddress}",
-                player.PlayerName,
-                steamId,
-                steamActive,
-                ipActive,
-                playerIp ?? "Unknown");
+            BanCheckLog(
+                LogLevel.Information,
+                $"[BanCheck] Player {player.PlayerName} ({steamId}) - Steam banned: {steamActive}, IP banned: {ipActive}, IP: {playerIp ?? "Unknown"}"
+            );
 
             if (!steamActive && !ipActive)
             {
-                CS2_SimpleAdmin._logger?.LogInformation(
-                    "[BanCheck] Player {PlayerName} ({SteamId}) allowed to join (no active bans).",
-                    player.PlayerName,
-                    steamId);
+                BanCheckLog(
+                    LogLevel.Information,
+                    $"[BanCheck] Player {player.PlayerName} ({steamId}) allowed to join (no active bans)."
+                );
                 return;
             }
 
@@ -276,18 +291,15 @@ public partial class CS2_SimpleAdmin
                     }
                     catch (Exception ex)
                     {
-                        CS2_SimpleAdmin._logger?.LogError("[BanCheck] Unable to refresh ban cache for {SteamId}: {ExceptionMessage}", steamId, ex.Message);
+                        BanCheckLog(LogLevel.Error, $"[BanCheck] Unable to refresh ban cache for {steamId}: {ex.Message}");
                     }
                 });
             }
 
-            CS2_SimpleAdmin._logger?.LogInformation(
-                "[BanCheck] Blocking player {PlayerName} ({SteamId}) due to active bans (Steam: {SteamBanned}, IP: {IpBanned}). IP: {IpAddress}",
-                player.PlayerName,
-                steamId,
-                steamActive,
-                ipActive,
-                playerIp ?? "Unknown");
+            BanCheckLog(
+                LogLevel.Information,
+                $"[BanCheck] Blocking player {player.PlayerName} ({steamId}) due to active bans (Steam: {steamActive}, IP: {ipActive}). IP: {playerIp ?? "Unknown"}"
+            );
 
             Helper.KickPlayer(player, NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED);
         });
@@ -302,6 +314,9 @@ public partial class CS2_SimpleAdmin
         var player = Utilities.GetPlayerFromSlot(playerslot);
         if (player == null || !player.IsValid || player.IsBot)
             return;
+
+        if (!CachedPlayers.Contains(player))
+            CachedPlayers.Add(player);
 
         PlayerManager.LoadPlayerData(player);
     }
@@ -349,8 +364,6 @@ public partial class CS2_SimpleAdmin
 
         if (player == null || !player.IsValid)
             return HookResult.Continue;
-
-        CachedPlayers.Add(player);
 
         if (player is { IsBot: true, IsHLTV: false })
         {
@@ -690,20 +703,9 @@ public partial class CS2_SimpleAdmin
         SpeedPlayers.Remove(player.Slot);
         GravityPlayers.Remove(player.Slot);
 
-        var playerPosition = player.PlayerPawn.Value?.AbsOrigin?.ToVector_t();
-        var playerRotation = player.PlayerPawn.Value?.AbsRotation?.ToQAngle_t();
-
         PlayersInfo[player.SteamID].DiePosition = new DiePosition(
-            new Vector_t(
-                playerPosition?.X ?? 0,
-                playerPosition?.Y ?? 0,
-                playerPosition?.Z ?? 0
-            ),
-            new QAngle_t(
-                playerRotation?.X ?? 0,
-                playerRotation?.Y ?? 0,
-                playerRotation?.Z ?? 0
-            )
+            (Vector3)player.PlayerPawn.Value?.AbsOrigin!,
+            (Vector3)player.PlayerPawn.Value?.AbsRotation!
         );
 
         return HookResult.Continue;
@@ -713,17 +715,13 @@ public partial class CS2_SimpleAdmin
     public HookResult OnPlayerTeam(EventPlayerTeam @event, GameEventInfo info)
     {
         var player = @event.Userid;
-        if (player == null || !player.IsValid || player.IsBot)
+        if (player == null || !player.IsValid || player.IsBot || !SilentPlayers.Contains(player.Slot))
             return HookResult.Continue;
 
-        if (!SilentPlayers.Contains(player.Slot))
-            return HookResult.Continue;
+        if (@event is not { Oldteam: <= 1, Team: >= 1 }) return HookResult.Continue;
 
-        if (@event is { Oldteam: <= 1, Team: >= 1 })
-        {
-            SilentPlayers.Remove(player.Slot);
-            SimpleAdminApi?.OnAdminToggleSilentEvent(player.Slot, false);
-        }
+        SilentPlayers.Remove(player.Slot);
+        SimpleAdminApi?.OnAdminToggleSilentEvent(player.Slot, false);
 
         return HookResult.Continue;
     }
