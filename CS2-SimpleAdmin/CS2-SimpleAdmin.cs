@@ -19,7 +19,7 @@ namespace CS2_SimpleAdmin;
 // Speed fix
 // Gravity fix
 
-[MinimumApiVersion(340)]
+[MinimumApiVersion(352)]
 public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdminConfig>
 {
     internal static CS2_SimpleAdmin Instance { get; private set; } = new();
@@ -33,7 +33,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
     {
         Instance = this;
 
-        Menu = new KitsuneMenu(this);
+        Menu = new Menu.KitsuneMenu(this);
 
         RegisterEvents();
 
@@ -260,6 +260,8 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
     public override void Unload(bool hotReload)
     {
+        Menu?.Dispose();
+
         CacheManager?.Dispose();
         CacheManager = null;
         PlayersTimer?.Kill();
