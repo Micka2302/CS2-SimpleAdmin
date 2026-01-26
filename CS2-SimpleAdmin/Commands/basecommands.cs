@@ -512,11 +512,11 @@ public partial class CS2_SimpleAdmin
                 AddTimer(1, () =>
                 {
                     if (!string.IsNullOrEmpty(adminsFile))
-                        AddTimer(2.0f, () => AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json"));
+                        AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json");
                     if (!string.IsNullOrEmpty(groupsFile))
-                        AddTimer(3.0f, () => AdminManager.LoadAdminGroups(ModuleDirectory + "/data/groups.json"));
+                        AdminManager.LoadAdminGroups(ModuleDirectory + "/data/groups.json");
                     if (!string.IsNullOrEmpty(adminsFile))
-                        AddTimer(4.0f, () => AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json"));
+                        AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json");
 
                     _logger?.LogInformation("Loaded admins!");
                 });
