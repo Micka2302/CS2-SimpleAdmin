@@ -62,7 +62,7 @@ internal class PlayerManager
                             : CS2_SimpleAdmin.Instance.CacheManager.IsPlayerBanned(playerName, steamId, ipAddress)
                     };
 
-                    // CS2_SimpleAdmin._logger?.LogInformation($"Player {playerName} ({steamId} - {ipAddress}) is banned? {isBanned.ToString()}");
+                    // CS2_SimpleAdmin._logger?.LogInformation($"Player {playerName} ({steamId} - {ipAddress}) is banned? {isBanned} | {CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType}");
 
                     if (isBanned)
                     {
@@ -80,7 +80,7 @@ internal class PlayerManager
                 {
                     var playerInfo = new PlayerInfo(userId, slot, new SteamID(steamId), playerName, ipAddress);
                     CS2_SimpleAdmin.PlayersInfo[steamId] = playerInfo;
-                    
+
                     if (_config.OtherSettings.CheckMultiAccountsByIp && ipAddress != null &&
                         CS2_SimpleAdmin.PlayersInfo[steamId] != null)
                     {
@@ -247,7 +247,7 @@ internal class PlayerManager
                 _loadPlayerSemaphore.Release();
             }
         });
-        
+
         if (CS2_SimpleAdmin.RenamedPlayers.TryGetValue(player.SteamID, out var name))
         {
             player.Rename(name);

@@ -9,12 +9,12 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
     {
         var connection = new MySqlConnection(connectionString);
         await connection.OpenAsync();
-        
+
         await using var cmd = connection.CreateCommand();
-        
+
         cmd.CommandText = "SET NAMES 'utf8mb4' COLLATE 'utf8mb4_general_ci';";
         await cmd.ExecuteNonQueryAsync();
-        
+
         // cmd.CommandText = "SET time_zone = '+00:00';";
         await cmd.ExecuteNonQueryAsync();
 
@@ -165,6 +165,12 @@ public class MySqlDatabaseProvider(string connectionString) : IDatabaseProvider
     public string GetAddAdminQuery() =>
         "INSERT INTO sa_admins (player_steamid, player_name, immunity, ends, created, server_id) " +
         "VALUES (@playerSteamId, @playerName, @immunity, @ends, @created, @serverid); SELECT LAST_INSERT_ID();";
+
+    public string GetAddAdminQueryCSS() =>
+        "INSERT INTO sa_admins (player_steamid,player_name,flags,immunity,ends,created,server_id,servers_groups)" +
+        "VALUES (@playerSteamId,@playerName,@flags,@immunity,@ends,@created,@serverid,@servers_groups)" +
+        "ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), player_name = VALUES(player_name), immunity = VALUES(immunity),ends = VALUES(ends),server_id = VALUES(server_id),servers_groups = VALUES(servers_groups);" +
+        "SELECT LAST_INSERT_ID();";
 
     public string GetGroupsQuery()
     {

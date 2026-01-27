@@ -649,6 +649,8 @@ public class PermissionManager(IDatabaseProvider? databaseProvider, CS2_SimpleAd
 
 		if (string.IsNullOrEmpty(playerSteamId) || flagsList.Count == 0) return;
 
+		var sg = await GetServerGroups();
+
 		var now = Time.ActualDateTime();
 		DateTime? futureTime;
 
@@ -657,21 +659,52 @@ public class PermissionManager(IDatabaseProvider? databaseProvider, CS2_SimpleAd
 		else
 			futureTime = null;
 
+		var flags = string.Join(",", flagsList);
+		var serverGroups = string.Join(",", sg);
+
 		try
 		{
 			await using var connection = await databaseProvider.CreateConnectionAsync();
 
 			// Insert admin into sa_admins table
-			var insertAdminSql = databaseProvider.GetAddAdminQuery();
-			var adminId = await connection.ExecuteScalarAsync<int>(insertAdminSql, new
+			string insertAdminSql;
+			if (config?.IsCSSPanel == true)
 			{
-				playerSteamId,
-				playerName,
-				immunity,
-				ends = futureTime,
-				created = now,
-				serverid = globalAdmin ? null : CS2_SimpleAdmin.ServerId
-			});
+				insertAdminSql = databaseProvider.GetAddAdminQueryCSS();
+			}
+			else
+			{
+				insertAdminSql = databaseProvider.GetAddAdminQuery();
+			}
+
+			int adminId;
+
+			if (config?.IsCSSPanel == true)
+			{
+				adminId = await connection.ExecuteScalarAsync<int>(insertAdminSql, new
+				{
+					playerSteamId,
+					playerName,
+					flags,
+					immunity,
+					ends = futureTime,
+					created = now,
+					serverid = globalAdmin ? null : CS2_SimpleAdmin.ServerId,
+					servers_groups = globalAdmin ? null : serverGroups
+				});
+			}
+			else
+			{
+				adminId = await connection.ExecuteScalarAsync<int>(insertAdminSql, new
+				{
+					playerSteamId,
+					playerName,
+					immunity,
+					ends = futureTime,
+					created = now,
+					serverid = globalAdmin ? null : CS2_SimpleAdmin.ServerId
+				});
+			}
 
 			// Insert flags into sa_admins_flags table
 			foreach (var flag in flagsList)

@@ -64,13 +64,15 @@ public class ServerManager
                 }
             }
 
-            string address = $"{(!string.IsNullOrWhiteSpace(CS2_SimpleAdmin.Instance.Config.DefaultServerIP) ? CS2_SimpleAdmin.Instance.Config.DefaultServerIP : ConVar.Find("ip")!.StringValue)}:{ConVar.Find("hostport")!.GetPrimitiveValue<int>()}";
+            var port = ConVar.Find("hostport")!.GetPrimitiveValue<int>();
+
+            string address = $"{(!string.IsNullOrWhiteSpace(CS2_SimpleAdmin.Instance.Config.DefaultServerIP) ? CS2_SimpleAdmin.Instance.Config.DefaultServerIP : ipAddress)}:{port}";
 
             var hostname = ConVar.Find("hostname")!.StringValue;
             var rcon = ConVar.Find("rcon_password")!.StringValue;
             CS2_SimpleAdmin.IpAddress = address;
 
-            CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", ipAddress);
+            CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", address);
 
             Task.Run(async () =>
             {
@@ -113,7 +115,7 @@ public class ServerManager
                         new { address });
 
                     CS2_SimpleAdmin.ServerId = serverId;
-                    CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", ipAddress);
+                    CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", address);
 
                     if (CS2_SimpleAdmin.ServerId != null)
                     {

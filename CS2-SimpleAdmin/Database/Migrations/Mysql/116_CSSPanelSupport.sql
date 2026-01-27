@@ -4,6 +4,15 @@ CHANGE COLUMN rcon_password rcon VARCHAR(255) NOT NULL;
 ALTER TABLE `sa_admins`
 ADD `servers_groups` int(11) NOT NULL AFTER `server_id`;
 
+CREATE TABLE IF NOT EXISTS `sa_admins_groups` (
+    `id` VARCHAR(50) NOT NULL,
+    `name` TEXT NOT NULL,
+    `flags` TEXT NOT NULL,
+    `immunity` varchar(64) NOT NULL DEFAULT '0',
+    `created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS `sa_servers_groups` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `name` varchar(64) NOT NULL,
@@ -49,3 +58,13 @@ CREATE TABLE IF NOT EXISTS `sa_statistics` (
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `playerId` (`playerId`) USING BTREE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Revert player_steamid columns back to VARCHAR so we can safely store non-numeric Steam IDs (e.g. bot/console values)
+ALTER TABLE `sa_bans`
+MODIFY `player_steamid` VARCHAR(64) NULL DEFAULT NULL;
+
+ALTER TABLE `sa_mutes` MODIFY `player_steamid` VARCHAR(64) NOT NULL;
+
+ALTER TABLE `sa_warns` MODIFY `player_steamid` VARCHAR(64) NOT NULL;
+
+ALTER TABLE `sa_admins` MODIFY `player_steamid` VARCHAR(64) NOT NULL;
