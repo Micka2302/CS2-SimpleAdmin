@@ -103,12 +103,12 @@ public class ServerManager
                     CS2_SimpleAdmin.ServerId = serverId;
                     CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", ipAddress);
 
+CS2_SimpleAdmin.ServerLoaded = true;
+
                     if (CS2_SimpleAdmin.Instance.CacheManager != null)
                     {
                         await CS2_SimpleAdmin.Instance.CacheManager.InitializeCacheAsync();
                     }
-                    
-                    CS2_SimpleAdmin.ServerLoaded = true;
                 }
                 catch (Exception ex)
                 {
