@@ -85,7 +85,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
         RegisterEvents();
         AddTimer(0.5f, RegisterCommands.InitializeCommands);
-        AddTimer(1.0f, () => ReloadAdmins(null));
+        AddTimer(3.0f, () => ReloadAdmins(null));
 
         if (!CoreConfig.UnlockConCommands)
         {
