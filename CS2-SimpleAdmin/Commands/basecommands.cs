@@ -507,21 +507,21 @@ public partial class CS2_SimpleAdmin
             var adminsFile = await File.ReadAllTextAsync(Instance.ModuleDirectory + "/data/admins.json");
             var groupsFile = await File.ReadAllTextAsync(Instance.ModuleDirectory + "/data/groups.json");
             
-            await Server.NextWorldUpdateAsync(() =>
+               await Server.NextWorldUpdateAsync(() =>
             {
                 AddTimer(1, () =>
                 {
                     if (!string.IsNullOrEmpty(adminsFile))
-                        AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json");
+                        AddTimer(2.0f, () => AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json"));
                     if (!string.IsNullOrEmpty(groupsFile))
-                        AdminManager.LoadAdminGroups(ModuleDirectory + "/data/groups.json");
+                        AddTimer(3.0f, () => AdminManager.LoadAdminGroups(ModuleDirectory + "/data/groups.json"));
                     if (!string.IsNullOrEmpty(adminsFile))
-                        AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json");
+                        AddTimer(4.0f, () => AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json"));
 
                     _logger?.LogInformation("Loaded admins!");
                 });
             });
-        });
+        });  
 
         //_ = _adminManager.GiveAllGroupsFlags();
         //_ = _adminManager.GiveAllFlags();
