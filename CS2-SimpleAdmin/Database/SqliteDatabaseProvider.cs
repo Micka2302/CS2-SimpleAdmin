@@ -211,6 +211,11 @@ public class SqliteDatabaseProvider(string filePath) : IDatabaseProvider
         VALUES (@playerSteamId, @playerName, @immunity, @ends, @created, @serverid);
         SELECT last_insert_rowid();
         """;
+    public string GetAddAdminQueryCSS() =>
+        "INSERT INTO sa_admins (player_steamid,player_name,flags,immunity,ends,created,server_id,servers_groups)" +
+        "VALUES (@playerSteamId,@playerName,@flags,@immunity,@ends,@created,@serverid,@servers_groups)" +
+        "ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), player_name = VALUES(player_name), immunity = VALUES(immunity),ends = VALUES(ends),server_id = VALUES(server_id),servers_groups = VALUES(servers_groups);" +
+        "SELECT LAST_INSERT_ID();";
 
     public string GetGroupsQuery() =>
         """

@@ -4,6 +4,15 @@ CHANGE COLUMN rcon_password rcon VARCHAR(255) NOT NULL;
 ALTER TABLE `sa_admins`
 ADD `servers_groups` int(11) NOT NULL AFTER `server_id`;
 
+CREATE TABLE IF NOT EXISTS `sa_admins_groups` (
+    `id` VARCHAR(50) NOT NULL,
+    `name` TEXT NOT NULL,
+    `flags` TEXT NOT NULL,
+    `immunity` varchar(64) NOT NULL DEFAULT '0',
+    `created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS `sa_servers_groups` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `name` varchar(64) NOT NULL,

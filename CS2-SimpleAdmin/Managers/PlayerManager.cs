@@ -271,7 +271,7 @@ internal class PlayerManager
                 _loadPlayerSemaphore.Release();
             }
         });
-        
+
         if (CS2_SimpleAdmin.RenamedPlayers.TryGetValue(player.SteamID, out var name))
         {
             player.Rename(name);

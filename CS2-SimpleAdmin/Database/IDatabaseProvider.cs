@@ -21,6 +21,7 @@ public interface IDatabaseProvider
     string GetAdminsQuery_CSS();
     string GetDeleteAdminQuery(bool globalDelete);
     string GetAddAdminQuery();
+    string GetAddAdminQueryCSS();
     string GetAddAdminFlagsQuery();
     string GetUpdateAdminGroupQuery();
     string GetGroupsQuery();

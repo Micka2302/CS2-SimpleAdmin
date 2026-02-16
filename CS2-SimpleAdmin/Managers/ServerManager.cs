@@ -31,7 +31,7 @@ public class ServerManager
     /// </summary>
     public void LoadServerData()
     {
-        CS2_SimpleAdmin.Instance.AddTimer(2.0f, () =>
+        CS2_SimpleAdmin.Instance.AddTimer(1.0f, () =>
         {
             if (CS2_SimpleAdmin.ServerLoaded || CS2_SimpleAdmin.DatabaseProvider == null) return;
 
@@ -64,7 +64,9 @@ public class ServerManager
                 }
             }
 
-            string address = $"{(!string.IsNullOrWhiteSpace(CS2_SimpleAdmin.Instance.Config.DefaultServerIP) ? CS2_SimpleAdmin.Instance.Config.DefaultServerIP : ConVar.Find("ip")!.StringValue)}:{ConVar.Find("hostport")!.GetPrimitiveValue<int>()}";
+            var port = ConVar.Find("hostport")!.GetPrimitiveValue<int>();
+
+            string address = $"{(!string.IsNullOrWhiteSpace(CS2_SimpleAdmin.Instance.Config.DefaultServerIP) ? CS2_SimpleAdmin.Instance.Config.DefaultServerIP : ipAddress)}:{port}";
 
             var hostname = ConVar.Find("hostname")!.StringValue;
             var rcon = ConVar.Find("rcon_password")!.StringValue;
@@ -111,16 +113,14 @@ public class ServerManager
                         new { address });
 
                     CS2_SimpleAdmin.ServerId = serverId;
-                    CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", ipAddress);
-
-                    if (CS2_SimpleAdmin.ServerId != null)
-                    {
-                        await Server.NextWorldUpdateAsync(() => CS2_SimpleAdmin.Instance.ReloadAdmins(null));
-                    }
+                    CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", address);
 
                     CS2_SimpleAdmin.ServerLoaded = true;
+
                     if (CS2_SimpleAdmin.Instance.CacheManager != null)
+                    {
                         await CS2_SimpleAdmin.Instance.CacheManager.InitializeCacheAsync();
+                    }
                 }
                 catch (Exception ex)
                 {
