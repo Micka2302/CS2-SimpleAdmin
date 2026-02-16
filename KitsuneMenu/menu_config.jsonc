@@ -1,0 +1,47 @@
+{
+    /* Available buttons:
+        Attack      - Primary attack button
+        Jump        - Jump
+        Duck        - Crouch
+        Forward     - Move forward
+        Back        - Move backward
+        Use         - Use key
+        Cancel      - Cancel action
+        Left        - Turn left
+        Right       - Turn right
+        Moveleft    - Strafe left
+        Moveright   - Strafe right
+        Attack2     - Secondary attack
+        Run         - Run
+        Reload      - Reload weapon
+        Alt1        - Alternative button 1
+        Alt2        - Alternative button 2
+        Speed       - Sprint/Fast movement
+        Walk        - Walk
+        Zoom        - Zoom view
+        Weapon1     - Primary weapon
+        Weapon2     - Secondary weapon
+        Bullrush    - Bullrush
+        Grenade1    - First grenade
+        Grenade2    - Second grenade
+        Attack3     - Third attack
+        Scoreboard  - Show scoreboard (TAB)
+    */
+
+	// !!! To apply changes, restart the server as CSS only reload shared things when restarted !!!
+
+    // Button to select menu items
+    "Select": "Use",
+
+    // Button to go back in submenus
+    "Back": "Speed",
+
+    // Navigation buttons
+    "Up": "Forward",
+    "Down": "Back",
+    "Left": "Moveleft",
+    "Right": "Moveright",
+
+    // Exit menu button
+    "Exit": "Reload"
+}

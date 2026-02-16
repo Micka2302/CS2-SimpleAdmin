@@ -1,0 +1,4 @@
+{
+  "bancheck_join_enabled": "{green}[Absynthium - Admins]{default} Ban check enabled.",
+  "bancheck_join_expired": "{green}[Absynthium - Admins]{default} Your previous ban has expired. Connection allowed."
+}

@@ -19,25 +19,50 @@ public class CS2_SimpleAdmin_ExampleModule : BasePlugin
     private string _dbConnectionString = string.Empty;
 
     private static ICS2_SimpleAdminApi? _sharedApi;
-    private readonly PluginCapability<ICS2_SimpleAdminApi> _pluginCapability = new("simpleadmin:api");
+    private readonly PluginCapability<ICS2_SimpleAdminApi?> _pluginCapability = new("simpleadmin:api");
 
     public override void OnAllPluginsLoaded(bool hotReload)
     {
-        _sharedApi = _pluginCapability.Get();
-
-        if (_sharedApi == null)
+        if (!TryResolveApi())
         {
-            Logger.LogError("CS2-SimpleAdmin SharedApi not found");
             Unload(false);
             return;
         }
 
-        _serverId = _sharedApi.GetServerId();
-        _dbConnectionString = _sharedApi.GetConnectionString();
+        var sharedApi = _sharedApi!;
+        _serverId = sharedApi.GetServerId();
+        _dbConnectionString = sharedApi.GetConnectionString();
         Logger.LogInformation($"{ModuleName} started with serverId {_serverId}");
 
-        _sharedApi.OnPlayerPenaltied += OnPlayerPenaltied;
-        _sharedApi.OnPlayerPenaltiedAdded += OnPlayerPenaltiedAdded;
+        sharedApi.OnPlayerPenaltied += OnPlayerPenaltied;
+        sharedApi.OnPlayerPenaltiedAdded += OnPlayerPenaltiedAdded;
+    }
+
+    private bool TryResolveApi()
+    {
+        try
+        {
+            _sharedApi = _pluginCapability.Get();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            Logger.LogError(ex,
+                "CS2-SimpleAdmin API capability 'simpleadmin:api' is missing. Ensure CS2-SimpleAdmin is loaded before this module.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to resolve CS2-SimpleAdmin API capability.");
+            return false;
+        }
+
+        if (_sharedApi == null)
+        {
+            Logger.LogError("CS2-SimpleAdmin SharedApi not found");
+            return false;
+        }
+
+        return true;
     }
 
     [ConsoleCommand("css_kickme")]

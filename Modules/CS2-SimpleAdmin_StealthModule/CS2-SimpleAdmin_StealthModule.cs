@@ -17,13 +17,13 @@ public class CS2_SimpleAdmin_StealthModule : BasePlugin, IPluginConfig<PluginCon
     public override string ModuleAuthor => "daffyy";
 
     private static ICS2_SimpleAdminApi? _sharedApi;
-    private readonly PluginCapability<ICS2_SimpleAdminApi> _pluginCapability = new("simpleadmin:api");
+    private readonly PluginCapability<ICS2_SimpleAdminApi?> _pluginCapability = new("simpleadmin:api");
 
     internal static readonly HashSet<CCSPlayerController> Players = [];
     // private readonly HashSet<int> _admins = [];
     // private readonly HashSet<CCSPlayerController> _spectatedPlayers = [];
 
-    public PluginConfig Config { get; set; }
+    public PluginConfig Config { get; set; } = new();
 
     public override void Load(bool hotReload)
     {
@@ -72,19 +72,44 @@ public class CS2_SimpleAdmin_StealthModule : BasePlugin, IPluginConfig<PluginCon
 
     public override void OnAllPluginsLoaded(bool hotReload)
     {
+        if (!TryResolveApi())
+        {
+            Unload(false);
+            return;
+        }
+
+        if (Config.BlockStatusCommand)
+        {
+            var sharedApi = _sharedApi!;
+            sharedApi.OnAdminToggleSilent += OnAdminToggleSilent;
+        }
+    }
+
+    private bool TryResolveApi()
+    {
         try
         {
             _sharedApi = _pluginCapability.Get();
-            if (_sharedApi == null) throw new NullReferenceException("_sharedApi is null");
-
-            if (Config.BlockStatusCommand)
-                _sharedApi.OnAdminToggleSilent += OnAdminToggleSilent;
         }
-        catch (Exception)
+        catch (KeyNotFoundException ex)
+        {
+            Logger.LogError(ex,
+                "CS2-SimpleAdmin API capability 'simpleadmin:api' is missing. Ensure CS2-SimpleAdmin is loaded before this module.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to resolve CS2-SimpleAdmin API capability.");
+            return false;
+        }
+
+        if (_sharedApi == null)
         {
             Logger.LogError("CS2-SimpleAdmin SharedApi not found");
-            Unload(false);
+            return false;
         }
+
+        return true;
     }
 
     private void OnAdminToggleSilent(int slot, bool status)

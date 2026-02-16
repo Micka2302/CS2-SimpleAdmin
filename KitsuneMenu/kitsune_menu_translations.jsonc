@@ -1,0 +1,25 @@
+{
+    /* Menu UI text translations */
+
+    // Counter shown when menu has more items than can be displayed
+    "ItemsCounter": "Items {0}/{1}",
+
+    // Footer action labels
+    "FooterSelect": "Select",
+    "FooterBack": "Back",
+    "FooterExit": "Exit",
+    "FooterSeparator": " | ",
+
+    // Button display names (used in footer)
+    "ButtonNames": {
+        "Jump": "ZQSD",
+        "Use": "Use",
+        "Speed": "Speed",
+        "Scoreboard": "TAB",
+        "Duck": "CTRL",
+        "Attack": "Mouse1",
+        "Attack2": "Mouse2",
+        "Reload": "R",
+        "Walk": "Shift"
+    }
+}

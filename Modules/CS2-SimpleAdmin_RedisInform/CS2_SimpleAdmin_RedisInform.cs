@@ -23,7 +23,7 @@ public class CS2_SimpleAdmin_RedisInform: BasePlugin, IPluginConfig<PluginConfig
     internal static CS2_SimpleAdmin_RedisInform Instance = new ();
     public PluginConfig Config { get; set; } = new();
     internal static ICS2_SimpleAdminApi? SharedApi;
-    private readonly PluginCapability<ICS2_SimpleAdminApi> _pluginCapability  = new("simpleadmin:api");
+    private readonly PluginCapability<ICS2_SimpleAdminApi?> _pluginCapability  = new("simpleadmin:api");
     
     private RedisSubscriber? _redisSubscriber;
 
@@ -49,16 +49,14 @@ public class CS2_SimpleAdmin_RedisInform: BasePlugin, IPluginConfig<PluginConfig
 
     public override void OnAllPluginsLoaded(bool hotReload)
     {
-        SharedApi = _pluginCapability.Get();
-
-        if (SharedApi == null)
+        if (!TryResolveApi())
         {
-            Logger.LogError("CS2-SimpleAdmin SharedApi not found");
             Unload(false);
             return;
         }
-        
-        SharedApi.OnAdminShowActivity += OnAdminShowActivity;
+
+        var sharedApi = SharedApi!;
+        sharedApi.OnAdminShowActivity += OnAdminShowActivity;
 
         if (hotReload)
         {
@@ -68,6 +66,33 @@ public class CS2_SimpleAdmin_RedisInform: BasePlugin, IPluginConfig<PluginConfig
         _redisSubscriber = new RedisSubscriber(Guid.NewGuid().ToString("N"));
         if (!_redisSubscriber.IsRunning)
             _redisSubscriber.Start();
+    }
+
+    private bool TryResolveApi()
+    {
+        try
+        {
+            SharedApi = _pluginCapability.Get();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            Logger.LogError(ex,
+                "CS2-SimpleAdmin API capability 'simpleadmin:api' is missing. Ensure CS2-SimpleAdmin is loaded before this module.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to resolve CS2-SimpleAdmin API capability.");
+            return false;
+        }
+
+        if (SharedApi == null)
+        {
+            Logger.LogError("CS2-SimpleAdmin SharedApi not found");
+            return false;
+        }
+
+        return true;
     }
 
     private void OnAdminShowActivity(string messageKey, string? callerName, bool dontPublish, object messageArgs)

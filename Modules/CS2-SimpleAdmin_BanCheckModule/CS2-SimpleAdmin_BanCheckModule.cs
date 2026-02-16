@@ -2,6 +2,7 @@ using System.Data.Common;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Capabilities;
+using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using CS2_SimpleAdminApi;
 using Dapper;
@@ -19,7 +20,7 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
 
     public PluginConfig Config { get; set; } = new();
 
-    private readonly PluginCapability<ICS2_SimpleAdminApi> _pluginCapability = new("simpleadmin:api");
+    private readonly PluginCapability<ICS2_SimpleAdminApi?> _pluginCapability = new("simpleadmin:api");
     private ICS2_SimpleAdminApi? _api;
 
     private string _connectionString = string.Empty;
@@ -28,16 +29,15 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
 
     public override void OnAllPluginsLoaded(bool hotReload)
     {
-        _api = _pluginCapability.Get();
-        if (_api == null)
+        if (!TryResolveApi())
         {
-            Logger.LogError("CS2-SimpleAdmin API not found");
             Unload(false);
             return;
         }
 
-        _connectionString = _api.GetConnectionString();
-        _serverId = _api.GetServerId();
+        var api = _api!;
+        _connectionString = api.GetConnectionString();
+        _serverId = api.GetServerId();
         _databaseKind = DetectDatabaseKind(_connectionString);
 
         RegisterListener<Listeners.OnClientConnect>(OnClientConnect);
@@ -57,6 +57,33 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
     public void OnConfigParsed(PluginConfig config)
     {
         Config = config;
+    }
+
+    private bool TryResolveApi()
+    {
+        try
+        {
+            _api = _pluginCapability.Get();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            Logger.LogError(ex,
+                "[BanCheck] CS2-SimpleAdmin API capability 'simpleadmin:api' is missing. Ensure CS2-SimpleAdmin is loaded before this module.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[BanCheck] Failed to resolve CS2-SimpleAdmin API capability.");
+            return false;
+        }
+
+        if (_api == null)
+        {
+            Logger.LogError("[BanCheck] CS2-SimpleAdmin API capability returned null.");
+            return false;
+        }
+
+        return true;
     }
 
     private void OnClientConnect(int playerSlot, string _, string ipAddress)
@@ -100,6 +127,7 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
             }
 
             var playerIp = ExtractIp(player.IpAddress) ?? initialIp;
+            ClearNativeBanIdList(player.SteamID);
 
             _ = Task.Run(async () =>
             {
@@ -309,6 +337,22 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
 
         var cleanIp = rawIp.Split(':')[0];
         return string.IsNullOrWhiteSpace(cleanIp) ? null : cleanIp;
+    }
+
+    private void ClearNativeBanIdList(ulong steamId64)
+    {
+        try
+        {
+            var steamId3 = new SteamID(steamId64).SteamId3;
+            Server.ExecuteCommand($"removeid {steamId3}");
+            Server.ExecuteCommand("writeid");
+
+            Logger.LogInformation("[BanCheck] Native banid/listid cleared on connect for {SteamId3}.", steamId3);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[BanCheck] Failed to clear native banid/listid for {SteamId64}.", steamId64);
+        }
     }
 
     private string Translate(string key, string fallback)

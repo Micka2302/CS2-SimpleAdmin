@@ -1,0 +1,6 @@
+{
+  "EmptyMenu": "The menu is empty.",
+  "FooterMain": "Move: <font color=\"#f5a142\">WASD <font color=\"#FFFFFF\">| <font color=\"#ff3333\">Select: <font color=\"#f5a142\">Use <font color=\"#FFFFFF\">| <font color=\"#ff3333\">Exit: <font color=\"#f5a142\">Reload",
+  "FooterSubMenu": "Move: <font color=\"#f5a142\">WASD <font color=\"#FFFFFF\">| <font color=\"#ff3333\">Select: <font color=\"#f5a142\">Use <font color=\"#FFFFFF\">| <font color=\"#ff3333\">Back: <font color=\"#f5a142\">Sprint <font color=\"#FFFFFF\">| <font color=\"#ff3333\">Exit: <font color=\"#f5a142\">Reload",
+  "Items": "Item:"
+}

@@ -14,21 +14,47 @@ public class CS2_SimpleAdmin_BanSoundModule: BasePlugin
     public override string ModuleAuthor => "daffyy";
 
     private static ICS2_SimpleAdminApi? _sharedApi;
-    private readonly PluginCapability<ICS2_SimpleAdminApi> _pluginCapability  = new("simpleadmin:api");
+    private readonly PluginCapability<ICS2_SimpleAdminApi?> _pluginCapability  = new("simpleadmin:api");
 
     public override void OnAllPluginsLoaded(bool hotReload)
     {
-        _sharedApi = _pluginCapability.Get();
-        if (_sharedApi == null)
+        if (!TryResolveApi())
         {
-            Logger.LogError("CS2-SimpleAdmin SharedApi not found");
             Unload(false);
             return;
         }
         
         RegisterListener<Listeners.OnServerPrecacheResources>(OnServerPrecacheResources);
 
-        _sharedApi.OnPlayerPenaltied += OnPlayerPenaltied;
+        var sharedApi = _sharedApi!;
+        sharedApi.OnPlayerPenaltied += OnPlayerPenaltied;
+    }
+
+    private bool TryResolveApi()
+    {
+        try
+        {
+            _sharedApi = _pluginCapability.Get();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            Logger.LogError(ex,
+                "CS2-SimpleAdmin API capability 'simpleadmin:api' is missing. Ensure CS2-SimpleAdmin is loaded before this module.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to resolve CS2-SimpleAdmin API capability.");
+            return false;
+        }
+
+        if (_sharedApi == null)
+        {
+            Logger.LogError("CS2-SimpleAdmin SharedApi not found");
+            return false;
+        }
+
+        return true;
     }
 
     private void OnServerPrecacheResources(ResourceManifest manifest)

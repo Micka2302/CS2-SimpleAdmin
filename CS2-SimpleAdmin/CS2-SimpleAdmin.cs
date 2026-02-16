@@ -33,7 +33,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
     {
         Instance = this;
 
-        Menu = new KitsuneMenu(this);
+        Menu = CreateMenuInstance();
 
         RegisterEvents();
 
@@ -76,6 +76,28 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         PlayersTimer?.Kill();
         PlayersTimer = null;
         PlayerManager.CheckPlayersTimer();
+    }
+
+    private global::Menu.KitsuneMenu CreateMenuInstance()
+    {
+        var menuType = typeof(global::Menu.KitsuneMenu);
+
+        var modernCtor = menuType.GetConstructor(
+            [typeof(BasePlugin), typeof(bool)]);
+        if (modernCtor != null)
+            return (global::Menu.KitsuneMenu)modernCtor.Invoke([this, true]);
+
+        var legacyCtor = menuType.GetConstructor(
+            [typeof(BasePlugin)]);
+        if (legacyCtor != null)
+            return (global::Menu.KitsuneMenu)legacyCtor.Invoke([this]);
+
+        var availableConstructors = string.Join(", ",
+            menuType.GetConstructors().Select(c =>
+                $"({string.Join(", ", c.GetParameters().Select(p => p.ParameterType.Name))})"));
+
+        throw new MissingMethodException(
+            $"No compatible KitsuneMenu constructor found. Expected (BasePlugin, bool) or (BasePlugin). Available constructors: {availableConstructors}");
     }
 
     public override void OnAllPluginsLoaded(bool hotReload)

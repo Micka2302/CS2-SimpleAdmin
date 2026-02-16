@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**\bin\**;**\obj\**</DefaultItemExcludes>
 
   </PropertyGroup>
 
@@ -141,10 +142,15 @@
     <None Update="admin_help.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-	<ItemGroup>
-		<Reference Include="KitsuneMenu">
-			<HintPath>3rd_party\KitsuneMenu.dll</HintPath>
-		</Reference>
-	</ItemGroup>
+  <ItemGroup>
+    <Compile Remove="3rd_party\KitsuneMenu\**\*.cs" />
+    <Compile Remove="Menu\KitsuneMenu.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="KitsuneMenu">
+      <HintPath>3rd_party\KitsuneMenu.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 
 </Project>
