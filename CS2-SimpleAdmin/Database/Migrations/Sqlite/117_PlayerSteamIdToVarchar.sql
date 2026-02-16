@@ -1,0 +1,1 @@
+-- SQLite stores Steam IDs as TEXT already, so no schema changes are required for this migration.

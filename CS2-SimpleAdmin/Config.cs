@@ -1,4 +1,4 @@
-﻿using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core;
 using System.Text.Json.Serialization;
 
 namespace CS2_SimpleAdmin;
@@ -257,6 +257,12 @@ public class OtherSettings
     [JsonPropertyName("AdditionalCommandsToLog")]
     public List<string> AdditionalCommandsToLog { get; set; } = new();
 
+    [JsonPropertyName("HideStealthPlayersFromSpecList")]
+    public bool HideStealthPlayersFromSpecList { get; set; } = true;
+
+    [JsonPropertyName("HideAdminsOnJoinPermission")]
+    public List<string> HideAdminsOnJoinPermission { get; set; } = ["@css/unban"];
+
     [JsonPropertyName("IgnoredIps")]
     public List<string> IgnoredIps { get; set; } = new();
 }
@@ -313,9 +319,6 @@ public class CS2_SimpleAdminConfig : BasePluginConfig
 
     [JsonPropertyName("IsCSSPanel")]
     public bool IsCSSPanel { get; set; } = false;
-
-    [JsonPropertyName("BanIDBan")]
-    public bool BanIDBan { get; set; } = true;
 
     [JsonPropertyName("FreezeWhileInMenu")]
     public bool FreezeWhileInMenu { get; set; } = false;
