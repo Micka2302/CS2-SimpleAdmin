@@ -1,4 +1,4 @@
-﻿using CounterStrikeSharp.API;
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Entities;
@@ -62,25 +62,7 @@ internal class PlayerManager
                             : CS2_SimpleAdmin.Instance.CacheManager.IsPlayerBanned(playerName, steamId, ipAddress)
                     };
 
-                    if (isBanned && CS2_SimpleAdmin.Instance.BanManager != null)
-                    {
-                        try
-                        {
-                            var tempPlayerInfo = new PlayerInfo(userId, slot, new SteamID(steamId), playerName, ipAddress);
-                            var dbStillBanned = await CS2_SimpleAdmin.Instance.BanManager.IsPlayerBanned(tempPlayerInfo);
-                            if (!dbStillBanned)
-                            {
-                                isBanned = false;
-                                await CS2_SimpleAdmin.Instance.CacheManager.RefreshCacheAsync();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            CS2_SimpleAdmin._logger?.LogError("Error validating ban status for {PlayerName}: {ExceptionMessage}", playerName, ex.Message);
-                        }
-                    }
-
-                    // CS2_SimpleAdmin._logger?.LogInformation($"Player {playerName} ({steamId} - {ipAddress}) is banned? {isBanned.ToString()}");
+                    // CS2_SimpleAdmin._logger?.LogInformation($"Player {playerName} ({steamId} - {ipAddress}) is banned? {isBanned} | {CS2_SimpleAdmin.Instance.Config.OtherSettings.BanType}");
 
                     if (isBanned)
                     {
@@ -98,12 +80,6 @@ internal class PlayerManager
                 {
                     var playerInfo = new PlayerInfo(userId, slot, new SteamID(steamId), playerName, ipAddress);
                     CS2_SimpleAdmin.PlayersInfo[steamId] = playerInfo;
-
-                    await Server.NextWorldUpdateAsync(() =>
-                    {
-                        if (!CS2_SimpleAdmin.CachedPlayers.Contains(player))
-                            CS2_SimpleAdmin.CachedPlayers.Add(player);
-                    });
 
                     if (_config.OtherSettings.CheckMultiAccountsByIp && ipAddress != null &&
                         CS2_SimpleAdmin.PlayersInfo[steamId] != null)
@@ -380,9 +356,6 @@ internal class PlayerManager
                 if (pluginInstance.CacheManager == null)
                     return;
 
-                if (tempPlayers.Count == 0)
-                    return;
-
                 // Optimization: Cache ban type and multi-account check to avoid repeated config access
                 var banType = config.BanType;
                 var checkMultiAccounts = config.CheckMultiAccountsByIp;
@@ -468,4 +441,3 @@ internal class PlayerManager
         }, TimerFlags.REPEAT);
     }
 }
-

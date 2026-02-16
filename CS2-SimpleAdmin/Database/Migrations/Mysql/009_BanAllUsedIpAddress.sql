@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS `sa_players_ips` (
-                                  `steamid` varchar(64) NOT NULL,
+                                  `steamid` bigint(20) NOT NULL,
                                   `address` varchar(64) NOT NULL,
                                   `used_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                   PRIMARY KEY (`steamid`, `address`)

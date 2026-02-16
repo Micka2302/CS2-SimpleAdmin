@@ -19,21 +19,21 @@ namespace CS2_SimpleAdmin;
 // Speed fix
 // Gravity fix
 
-[MinimumApiVersion(352)]
+[MinimumApiVersion(340)]
 public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdminConfig>
 {
     internal static CS2_SimpleAdmin Instance { get; private set; } = new();
 
     public override string ModuleName => "CS2-SimpleAdmin" + (Helper.IsDebugBuild ? " (DEBUG)" : " (RELEASE)");
     public override string ModuleDescription => "Simple admin plugin for Counter-Strike 2 :)";
-    public override string ModuleAuthor => "daffyy, Dliix66, ShiNxz & Cruze, Micka2302";
-    public override string ModuleVersion => "1.7.8-beta-7";
+    public override string ModuleAuthor => "daffyy, Dliix66, ShiNxz & Cruze";
+    public override string ModuleVersion => "1.7.8-beta-10b";
 
     public override void Load(bool hotReload)
     {
         Instance = this;
 
-        Menu = new Menu.KitsuneMenu(this);
+        Menu = new KitsuneMenu(this);
 
         RegisterEvents();
 
@@ -260,8 +260,6 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
     public override void Unload(bool hotReload)
     {
-        Menu?.Dispose();
-
         CacheManager?.Dispose();
         CacheManager = null;
         PlayersTimer?.Kill();

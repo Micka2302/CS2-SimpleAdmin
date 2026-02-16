@@ -29,7 +29,7 @@ public partial class CS2_SimpleAdmin
         {
             if (caller!.CanTarget(player))
             {
-                NoClip(caller, player, callerName, command);
+                NoClip(caller, player, callerName);
             }
         });
 

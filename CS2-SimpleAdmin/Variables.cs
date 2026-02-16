@@ -60,7 +60,7 @@ public partial class CS2_SimpleAdmin
     internal static ILogger? _logger;
 
     // Menu API and Capabilities
-    public static Menu.KitsuneMenu Menu { get; private set; } = null!;
+    public static KitsuneMenu Menu { get; private set; } = null!;
 
     // Shared API
     internal static Api.CS2_SimpleAdminApi? SimpleAdminApi { get; private set; }

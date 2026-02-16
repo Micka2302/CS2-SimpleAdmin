@@ -298,5 +298,3 @@ internal class MuteManager(IDatabaseProvider? databaseProvider)
         }
     }
 }
-
-

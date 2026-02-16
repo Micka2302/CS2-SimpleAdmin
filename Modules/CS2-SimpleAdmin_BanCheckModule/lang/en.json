@@ -1,0 +1,4 @@
+{
+  "bancheck_join_enabled": "{green}[BanCheck]{default} Ban check enabled.",
+  "bancheck_join_expired": "{green}[BanCheck]{default} Your previous ban has expired. Connection allowed."
+}

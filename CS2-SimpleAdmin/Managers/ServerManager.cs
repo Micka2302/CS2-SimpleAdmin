@@ -72,6 +72,8 @@ public class ServerManager
             var rcon = ConVar.Find("rcon_password")!.StringValue;
             CS2_SimpleAdmin.IpAddress = address;
 
+            CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", address);
+
             Task.Run(async () =>
             {
                 try

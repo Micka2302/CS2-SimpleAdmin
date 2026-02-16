@@ -44,7 +44,6 @@ internal class WarnManager(IDatabaseProvider? databaseProvider)
         }
         catch(Exception e)
         {
-            CS2_SimpleAdmin._logger?.LogError("Unable to add warn for {Player} ({SteamId}): {Message}", player.Name, player.SteamId.SteamId64, e.Message);
             return null;
         }
     }

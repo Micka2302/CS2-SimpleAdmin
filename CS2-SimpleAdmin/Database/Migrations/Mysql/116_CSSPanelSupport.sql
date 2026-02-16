@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS `sa_servers_groups` (
 
 CREATE TABLE IF NOT EXISTS `sa_players_ips` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
-    `steamid` varchar(64) NOT NULL,
+    `steamid` bigint(20) NOT NULL,
     `address` varchar(64) NOT NULL,
     `used_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -58,3 +58,13 @@ CREATE TABLE IF NOT EXISTS `sa_statistics` (
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `playerId` (`playerId`) USING BTREE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Revert player_steamid columns back to VARCHAR so we can safely store non-numeric Steam IDs (e.g. bot/console values)
+ALTER TABLE `sa_bans`
+MODIFY `player_steamid` VARCHAR(64) NULL DEFAULT NULL;
+
+ALTER TABLE `sa_mutes` MODIFY `player_steamid` VARCHAR(64) NOT NULL;
+
+ALTER TABLE `sa_warns` MODIFY `player_steamid` VARCHAR(64) NOT NULL;
+
+ALTER TABLE `sa_admins` MODIFY `player_steamid` VARCHAR(64) NOT NULL;

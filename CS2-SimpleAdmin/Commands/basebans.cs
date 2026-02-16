@@ -116,6 +116,12 @@ public partial class CS2_SimpleAdmin
             Helper.KickPlayer(player.UserId.Value, NetworkDisconnectionReason.NETWORK_DISCONNECT_KICKBANADDED, Config.OtherSettings.KickTime);
         }
 
+        // Execute ban command if necessary
+        if (UnlockedCommands && Config.BanIDBan)
+        {
+            Server.ExecuteCommand($"banid 1 {new SteamID(player.SteamID).SteamId3}");
+        }
+
         if (!silent)
         {
             if (command == null)
@@ -234,6 +240,8 @@ public partial class CS2_SimpleAdmin
 
         Helper.LogCommand(caller, command);
 
+        if (UnlockedCommands && Config.BanIDBan)
+            Server.ExecuteCommand($"banid 1 {steamId.SteamId3}");
     }
 
     /// <summary>

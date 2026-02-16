@@ -1,4 +1,4 @@
-﻿{
+{
   "ConfigVersion": 25,
   "DatabaseConfig": {
     "DatabaseType": "SQLite",
@@ -27,8 +27,6 @@
     "UserMessageGagChatType": false,
     "CheckMultiAccountsByIp": true,
     "AdditionalCommandsToLog": [],
-    "HideStealthPlayersFromSpecList": false,
-    "HideAdminsOnJoinPermission": ["@css/unban"],
     "IgnoredIps": []
   },
   "EnableMetrics": true,
@@ -304,5 +302,6 @@
   },
   "Statistics_Enable": true,
   "IsCSSPanel": true,
+  "BanIDBan": false,
   "FreezeWhileInMenu": false
 }
