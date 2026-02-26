@@ -19,7 +19,7 @@ public partial class CS2_SimpleAdmin
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player =>
             player.IsValid &&
@@ -81,7 +81,7 @@ public partial class CS2_SimpleAdmin
     public void OnGodCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
@@ -147,7 +147,7 @@ public partial class CS2_SimpleAdmin
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
         int.TryParse(command.GetArg(2), out var time);
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
@@ -174,7 +174,7 @@ public partial class CS2_SimpleAdmin
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
         float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var size);
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 
@@ -259,7 +259,7 @@ public partial class CS2_SimpleAdmin
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
 

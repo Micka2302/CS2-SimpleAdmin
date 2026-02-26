@@ -23,7 +23,7 @@ public partial class CS2_SimpleAdmin
         if (DatabaseProvider == null) return;
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
         
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
@@ -189,7 +189,7 @@ public partial class CS2_SimpleAdmin
         // Validate and extract SteamID
         if (!Helper.ValidateSteamId(command.GetArg(1), out var steamId) || steamId == null)
         {
-            command.ReplyToCommand("Invalid SteamID64.");
+            Helper.ReplyToCommand(caller, command, "Invalid SteamID64.");
             return;
         }
 
@@ -235,7 +235,7 @@ public partial class CS2_SimpleAdmin
 
             Helper.SendDiscordPenaltyMessage(caller, steamid.ToString(), reason, time, PenaltyType.Gag, _localizer);
 
-            command.ReplyToCommand($"Player with steamid {steamid} is not online. Gag has been added offline.");
+            Helper.ReplyToCommand(caller, command, $"Player with steamid {steamid} is not online. Gag has been added offline.");
         }
 
         // Log the gag command and respond to the command
@@ -263,7 +263,7 @@ public partial class CS2_SimpleAdmin
         
         if (pattern.Length <= 1)
         {
-            command.ReplyToCommand($"Too short pattern to search.");
+            Helper.ReplyToCommand(caller, command, $"Too short pattern to search.");
             return;
         }
 
@@ -283,7 +283,7 @@ public partial class CS2_SimpleAdmin
                     await MuteManager.UnmutePlayer(player.SteamID.ToString(), callerSteamId, reason);
                 });
 
-                command.ReplyToCommand($"Ungaged player {player.PlayerName}.");
+                Helper.ReplyToCommand(caller, command, $"Ungaged player {player.PlayerName}.");
                 return;
             }
         }
@@ -304,7 +304,7 @@ public partial class CS2_SimpleAdmin
                 await MuteManager.UnmutePlayer(namePlayer.SteamID.ToString(), callerSteamId, reason);
             });
 
-            command.ReplyToCommand($"Ungaged player {namePlayer.PlayerName}.");
+            Helper.ReplyToCommand(caller, command, $"Ungaged player {namePlayer.PlayerName}.");
         }
         else
         {
@@ -313,7 +313,7 @@ public partial class CS2_SimpleAdmin
                 await MuteManager.UnmutePlayer(pattern, callerSteamId, reason);
             });
 
-            command.ReplyToCommand($"Ungaged offline player with pattern {pattern}.");
+            Helper.ReplyToCommand(caller, command, $"Ungaged offline player with pattern {pattern}.");
         }
     }
 
@@ -329,7 +329,7 @@ public partial class CS2_SimpleAdmin
         if (DatabaseProvider == null) return;
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
@@ -454,7 +454,7 @@ public partial class CS2_SimpleAdmin
         // Validate and extract SteamID
         if (!Helper.ValidateSteamId(command.GetArg(1), out var steamId) || steamId == null)
         {
-            command.ReplyToCommand("Invalid SteamID64.");
+            Helper.ReplyToCommand(caller, command, "Invalid SteamID64.");
             return;
         }
 
@@ -500,7 +500,7 @@ public partial class CS2_SimpleAdmin
 
             Helper.SendDiscordPenaltyMessage(caller, steamid.ToString(), reason, time, PenaltyType.Mute, _localizer);
             
-            command.ReplyToCommand($"Player with steamid {steamid} is not online. Mute has been added offline.");
+            Helper.ReplyToCommand(caller, command, $"Player with steamid {steamid} is not online. Mute has been added offline.");
         }
 
         // Log the mute command and respond to the command
@@ -575,7 +575,7 @@ public partial class CS2_SimpleAdmin
         
         if (pattern.Length <= 1)
         {
-            command.ReplyToCommand("Too short pattern to search.");
+            Helper.ReplyToCommand(caller, command, "Too short pattern to search.");
             return;
         }
 
@@ -597,7 +597,7 @@ public partial class CS2_SimpleAdmin
                     await MuteManager.UnmutePlayer(player.SteamID.ToString(), callerSteamId, reason, 1);
                 });
 
-                command.ReplyToCommand($"Unmuted player {player.PlayerName}.");
+                Helper.ReplyToCommand(caller, command, $"Unmuted player {player.PlayerName}.");
                 return;
             }
         }
@@ -620,7 +620,7 @@ public partial class CS2_SimpleAdmin
                 await MuteManager.UnmutePlayer(namePlayer.SteamID.ToString(), callerSteamId, reason, 1);
             });
 
-            command.ReplyToCommand($"Unmuted player {namePlayer.PlayerName}.");
+            Helper.ReplyToCommand(caller, command, $"Unmuted player {namePlayer.PlayerName}.");
         }
         else
         {
@@ -629,7 +629,7 @@ public partial class CS2_SimpleAdmin
                 await MuteManager.UnmutePlayer(pattern, callerSteamId, reason, 1);
             });
 
-            command.ReplyToCommand($"Unmuted offline player with pattern {pattern}.");
+            Helper.ReplyToCommand(caller, command, $"Unmuted offline player with pattern {pattern}.");
         }
     }
 
@@ -646,7 +646,7 @@ public partial class CS2_SimpleAdmin
         if (DatabaseProvider == null) return;
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
         
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
@@ -773,7 +773,7 @@ public partial class CS2_SimpleAdmin
         // Validate and extract SteamID
         if (!Helper.ValidateSteamId(command.GetArg(1), out var steamId) || steamId == null)
         {
-            command.ReplyToCommand("Invalid SteamID64.");
+            Helper.ReplyToCommand(caller, command, "Invalid SteamID64.");
             return;
         }
 
@@ -819,7 +819,7 @@ public partial class CS2_SimpleAdmin
 
             Helper.SendDiscordPenaltyMessage(caller, steamid.ToString(), reason, time, PenaltyType.Silence, _localizer);
 
-            command.ReplyToCommand($"Player with steamid {steamid} is not online. Silence has been added offline.");
+            Helper.ReplyToCommand(caller, command, $"Player with steamid {steamid} is not online. Silence has been added offline.");
         }
 
         // Log the silence command and respond to the command
@@ -894,7 +894,7 @@ public partial class CS2_SimpleAdmin
         
         if (pattern.Length <= 1)
         {
-            command.ReplyToCommand("Too short pattern to search.");
+            Helper.ReplyToCommand(caller, command, "Too short pattern to search.");
             return;
         }
         
@@ -918,7 +918,7 @@ public partial class CS2_SimpleAdmin
                     await MuteManager.UnmutePlayer(player.SteamID.ToString(), callerSteamId, reason, 2); // Unmute by type 2 (silence)
                 });
 
-                command.ReplyToCommand($"Unsilenced player {player.PlayerName}.");
+                Helper.ReplyToCommand(caller, command, $"Unsilenced player {player.PlayerName}.");
                 return;
             }
         }
@@ -943,7 +943,7 @@ public partial class CS2_SimpleAdmin
                 await MuteManager.UnmutePlayer(namePlayer.SteamID.ToString(), callerSteamId, reason, 2); // Unmute by type 2 (silence)
             });
 
-            command.ReplyToCommand($"Unsilenced player {namePlayer.PlayerName}.");
+            Helper.ReplyToCommand(caller, command, $"Unsilenced player {namePlayer.PlayerName}.");
         }
         else
         {
@@ -952,7 +952,7 @@ public partial class CS2_SimpleAdmin
                 await MuteManager.UnmutePlayer(pattern, callerSteamId, reason, 2); // Unmute by type 2 (silence)
             });
 
-            command.ReplyToCommand($"Unsilenced offline player with pattern {pattern}.");
+            Helper.ReplyToCommand(caller, command, $"Unsilenced offline player with pattern {pattern}.");
         }
     }
     

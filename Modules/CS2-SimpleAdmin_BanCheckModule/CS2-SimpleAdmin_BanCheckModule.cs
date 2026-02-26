@@ -152,12 +152,14 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
                         return; // Slot reused by another player while async check was running.
 
                     Logger.LogInformation(
-                        "[BanCheck] Status for {PlayerName} ({SteamId}) - IsBanned={IsBanned}, SteamBanned={SteamBanned}, IpBanned={IpBanned}, Ip={PlayerIp}, ExpiredUpdated={ExpiredUpdated}, ActiveBanId={ActiveBanId}, ActiveBanReason={ActiveBanReason}, SteamBanId={SteamBanId}, SteamBanReason={SteamBanReason}, IpBanId={IpBanId}, IpBanReason={IpBanReason}",
+                        "[BanCheck] Status for {PlayerName} ({SteamId}) - IsBanned={IsBanned}, SteamBanned={SteamBanned}, IpBanned={IpBanned}, IpBanBypassedBySteamUnban={IpBanBypassedBySteamUnban}, LatestSteamUnbanId={LatestSteamUnbanId}, Ip={PlayerIp}, ExpiredUpdated={ExpiredUpdated}, ActiveBanId={ActiveBanId}, ActiveBanReason={ActiveBanReason}, SteamBanId={SteamBanId}, SteamBanReason={SteamBanReason}, IpBanId={IpBanId}, IpBanReason={IpBanReason}",
                         currentPlayer.PlayerName,
                         steamId,
                         result.IsBlocked,
                         result.SteamBanned,
                         result.IpBanned,
+                        result.IpBanBypassedBySteamUnban,
+                        result.LatestSteamUnbanId,
                         playerIp ?? "Unknown",
                         result.ExpiredBanUpdated,
                         result.ActiveBanId,
@@ -171,7 +173,7 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
                     {
                         Logger.LogInformation("[BanCheck] Blocking {PlayerName} ({SteamId}) due to active ban.",
                             currentPlayer.PlayerName, steamId);
-                        currentPlayer.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED);
+                        DisconnectBlockedPlayer(currentPlayer);
                         return;
                     }
 
@@ -210,15 +212,6 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
             WHERE status = 'ACTIVE'
               AND duration > 0
               AND ends <= CURRENT_TIMESTAMP
-              AND {playerCondition}
-              {serverCondition};
-            """;
-
-        var activeSql = $"""
-            SELECT COUNT(*)
-            FROM sa_bans
-            WHERE status = 'ACTIVE'
-              AND (duration = 0 OR ends IS NULL OR ends > CURRENT_TIMESTAMP)
               AND {playerCondition}
               {serverCondition};
             """;
@@ -274,9 +267,16 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
             LIMIT 1;
             """;
 
+        var latestSteamUnbanSql = $"""
+            SELECT MAX(id)
+            FROM sa_bans
+            WHERE status = 'UNBANNED'
+              AND player_steamid = @PlayerSteamID
+              {serverCondition};
+            """;
+
         await using var connection = await OpenConnectionAsync();
         var expiredRows = await connection.ExecuteAsync(expireSql, parameters);
-        var activeRows = await connection.ExecuteScalarAsync<int>(activeSql, parameters);
         var steamActiveRows = await connection.ExecuteScalarAsync<int>(steamActiveSql, parameters);
         var ipActiveRows = checkIp
             ? await connection.ExecuteScalarAsync<int>(ipActiveSql, parameters)
@@ -286,13 +286,25 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
         var ipBan = checkIp
             ? await connection.QueryFirstOrDefaultAsync<BanDetail>(ipDetailSql, parameters)
             : null;
+        var latestSteamUnbanId = await connection.ExecuteScalarAsync<int?>(latestSteamUnbanSql, parameters);
 
         var steamBanned = steamActiveRows > 0;
         var ipBanned = checkIp && ipActiveRows > 0;
+        var ipBanBypassedBySteamUnban =
+            checkIp &&
+            ipBanned &&
+            !steamBanned &&
+            latestSteamUnbanId.HasValue &&
+            (ipBan?.Id is null || ipBan.Id <= latestSteamUnbanId.Value);
+
+        var isBlocked = steamBanned || (ipBanned && !ipBanBypassedBySteamUnban);
+
         return new BanCheckResult(
-            activeRows > 0,
+            isBlocked,
             steamBanned,
             ipBanned,
+            ipBanBypassedBySteamUnban,
+            latestSteamUnbanId,
             expiredRows > 0,
             activeBan?.Id,
             activeBan?.Reason,
@@ -355,6 +367,16 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
         }
     }
 
+    private void DisconnectBlockedPlayer(CCSPlayerController player)
+    {
+        var steamId64 = player.SteamID;
+        ClearNativeBanIdList(steamId64);
+        player.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED);
+
+        // Safety pass: some server setups recreate listid after disconnect handling.
+        AddTimer(0.10f, () => ClearNativeBanIdList(steamId64));
+    }
+
     private string Translate(string key, string fallback)
     {
         var value = Localizer?[key]?.Value;
@@ -371,6 +393,8 @@ public class CS2_SimpleAdmin_BanCheckModule : BasePlugin, IPluginConfig<PluginCo
         bool IsBlocked,
         bool SteamBanned,
         bool IpBanned,
+        bool IpBanBypassedBySteamUnban,
+        int? LatestSteamUnbanId,
         bool ExpiredBanUpdated,
         int? ActiveBanId,
         string? ActiveBanReason,

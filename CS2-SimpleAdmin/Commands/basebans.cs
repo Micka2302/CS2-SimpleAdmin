@@ -25,7 +25,7 @@ public partial class CS2_SimpleAdmin
         if (command.ArgCount < 2)
             return;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, Connected: PlayerConnectedState.PlayerConnected, IsHLTV: false }).ToList();
 
@@ -190,7 +190,7 @@ public partial class CS2_SimpleAdmin
         if (command.ArgCount < 2 || string.IsNullOrEmpty(command.GetArg(1))) return;
         if (!Helper.ValidateSteamId(command.GetArg(1), out var steamId) || steamId == null)
         {
-            command.ReplyToCommand("Invalid SteamID64.");
+            Helper.ReplyToCommand(caller, command, "Invalid SteamID64.");
             return;
         }
 
@@ -235,7 +235,7 @@ public partial class CS2_SimpleAdmin
 
             Helper.SendDiscordPenaltyMessage(caller, steamid.ToString(), reason, time, PenaltyType.Ban, _localizer);
 
-            command.ReplyToCommand($"Player with steamid {steamid} is not online. Ban has been added offline.");
+            Helper.ReplyToCommand(caller, command, $"Player with steamid {steamid} is not online. Ban has been added offline.");
         }
 
         Helper.LogCommand(caller, command);
@@ -260,7 +260,7 @@ public partial class CS2_SimpleAdmin
 
         if (!Helper.IsValidIp(ipAddress))
         {
-            command.ReplyToCommand($"Invalid IP address.");
+            Helper.ReplyToCommand(caller, command, $"Invalid IP address.");
             return;
         }
 
@@ -298,7 +298,7 @@ public partial class CS2_SimpleAdmin
                 await BanManager.AddBanByIp(ipAddress, adminInfo, reason, time);
             });
 
-            command.ReplyToCommand($"Player with ip {ipAddress} is not online. Ban has been added offline.");
+            Helper.ReplyToCommand(caller, command, $"Player with ip {ipAddress} is not online. Ban has been added offline.");
         }
 
         Helper.LogCommand(caller, command);
@@ -341,7 +341,7 @@ public partial class CS2_SimpleAdmin
         var callerSteamId = caller?.SteamID.ToString() ?? _localizer?["sa_console"] ?? "Console";
         if (command.GetArg(1).Length <= 1)
         {
-            command.ReplyToCommand($"Too short pattern to search.");
+            Helper.ReplyToCommand(caller, command, $"Too short pattern to search.");
             return;
         }
 
@@ -353,7 +353,7 @@ public partial class CS2_SimpleAdmin
         reason = string.IsNullOrWhiteSpace(reason) ? _localizer?["sa_unknown"] ?? "Unknown" : reason;
         Task.Run(async () => await BanManager.UnbanPlayer(pattern, callerSteamId, reason));
         Helper.LogCommand(caller, command);
-        command.ReplyToCommand($"Unbanned player with pattern {pattern}.");
+        Helper.ReplyToCommand(caller, command, $"Unbanned player with pattern {pattern}.");
     }
 
     /// <summary>
@@ -371,7 +371,7 @@ public partial class CS2_SimpleAdmin
         if (command.ArgCount < 2)
             return;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player.IsValid && player.Connected == PlayerConnectedState.PlayerConnected && !player.IsHLTV).ToList();
 
@@ -568,13 +568,13 @@ public partial class CS2_SimpleAdmin
 
         if (command.GetArg(1).Length <= 1)
         {
-            command.ReplyToCommand($"Too short pattern to search.");
+            Helper.ReplyToCommand(caller, command, $"Too short pattern to search.");
             return;
         }
 
         var pattern = command.GetArg(1);
         Task.Run(async () => await WarnManager.UnwarnPlayer(pattern));
         Helper.LogCommand(caller, command);
-        command.ReplyToCommand($"Unwarned player with pattern {pattern}.");
+        Helper.ReplyToCommand(caller, command, $"Unwarned player with pattern {pattern}.");
     }
 }

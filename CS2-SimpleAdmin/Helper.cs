@@ -846,6 +846,31 @@ internal static class Helper
         return message.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
     }
 
+    public static void ReplyToCommand(CCSPlayerController? caller, CommandInfo command, string message)
+    {
+        command.ReplyToCommand(message);
+
+        if (caller != null)
+            return;
+
+        var rawCommand = command.GetArg(0);
+        if (!string.IsNullOrWhiteSpace(rawCommand) &&
+            !rawCommand.StartsWith("css_", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var prefix = CS2_SimpleAdmin._localizer?["sa_prefix"] ?? "[SA] ";
+        foreach (var part in SeparateLines(message))
+        {
+            var line = part.Trim();
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            Server.PrintToChatAll($"{prefix}{line.ReplaceColorTags()}");
+        }
+    }
+
     public static string CenterMessage(string message) =>
         $"⠀⠀⠀⠀⠀⠀⠀⠀{message}⠀⠀⠀⠀⠀⠀⠀⠀";
 

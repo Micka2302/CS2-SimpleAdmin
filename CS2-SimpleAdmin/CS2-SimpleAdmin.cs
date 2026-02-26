@@ -262,11 +262,26 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
     internal static TargetResult? GetTarget(CommandInfo command, int argument = 1)
     {
+        return GetTargetInternal(null, command, argument, mirrorConsoleReplyToChat: false);
+    }
+
+    internal static TargetResult? GetTarget(CCSPlayerController? caller, CommandInfo command, int argument = 1)
+    {
+        return GetTargetInternal(caller, command, argument, mirrorConsoleReplyToChat: true);
+    }
+
+    private static TargetResult? GetTargetInternal(CCSPlayerController? caller, CommandInfo command, int argument,
+        bool mirrorConsoleReplyToChat)
+    {
         var matches = command.GetArgTargetResult(argument);
 
         if (!matches.Any())
         {
-            command.ReplyToCommand($"Target {command.GetArg(argument)} not found.");
+            if (mirrorConsoleReplyToChat)
+                Helper.ReplyToCommand(caller, command, $"Target {command.GetArg(argument)} not found.");
+            else
+                command.ReplyToCommand($"Target {command.GetArg(argument)} not found.");
+
             return null;
         }
 
@@ -276,7 +291,11 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
         if (matches.Count() == 1)
             return matches;
 
-        command.ReplyToCommand($"Multiple targets found for \"{command.GetArg(argument)}\".");
+        if (mirrorConsoleReplyToChat)
+            Helper.ReplyToCommand(caller, command, $"Multiple targets found for \"{command.GetArg(argument)}\".");
+        else
+            command.ReplyToCommand($"Multiple targets found for \"{command.GetArg(argument)}\".");
+
         return null;
     }
 

@@ -1,4 +1,4 @@
-﻿using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -92,7 +92,7 @@ public partial class CS2_SimpleAdmin
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
@@ -109,7 +109,7 @@ public partial class CS2_SimpleAdmin
             player.PrintToChat($"({callerName}) {utf8String}".ReplaceColorTags());
         });
 
-        command.ReplyToCommand($" Private message sent!");
+        Helper.ReplyToCommand(caller, command, $" Private message sent!");
     }
 
     /// <summary>

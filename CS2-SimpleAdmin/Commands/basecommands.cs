@@ -43,7 +43,7 @@ public partial class CS2_SimpleAdmin
 
         if (!string.IsNullOrEmpty(command.GetArg(1)) && AdminManager.PlayerHasPermissions(new SteamID(caller.SteamID), "@css/kick"))
         {
-            var targets = GetTarget(command);
+            var targets = GetTarget(caller, command);
 
             if (targets == null)
                 return;
@@ -229,7 +229,7 @@ public partial class CS2_SimpleAdmin
 
         foreach (var line in lines)
         {
-            command.ReplyToCommand(string.IsNullOrWhiteSpace(line) ? " " : line.ReplaceColorTags());
+            Helper.ReplyToCommand(caller, command, string.IsNullOrWhiteSpace(line) ? " " : line.ReplaceColorTags());
         }
     }
 
@@ -246,7 +246,7 @@ public partial class CS2_SimpleAdmin
 
         if (!Helper.ValidateSteamId(command.GetArg(1), out var steamId) || steamId == null)
         {
-            command.ReplyToCommand($"Invalid SteamID64.");
+            Helper.ReplyToCommand(caller, command, $"Invalid SteamID64.");
             return;
         }
 
@@ -254,12 +254,12 @@ public partial class CS2_SimpleAdmin
 
         if (command.GetArg(2).Length <= 0)
         {
-            command.ReplyToCommand($"Invalid player name.");
+            Helper.ReplyToCommand(caller, command, $"Invalid player name.");
             return;
         }
         if (!command.GetArg(3).Contains('@') && !command.GetArg(3).Contains('#'))
         {
-            command.ReplyToCommand($"Invalid flag or group.");
+            Helper.ReplyToCommand(caller, command, $"Invalid flag or group.");
             return;
         }
 
@@ -295,7 +295,7 @@ public partial class CS2_SimpleAdmin
 
         var msg = $"Added '{flags}' flags to '{name}' ({steamid})";
         if (command != null)
-            command.ReplyToCommand(msg);
+            Helper.ReplyToCommand(caller, command, msg);
         else if (caller != null && caller.IsValid)
             caller.PrintToChat(msg);
         else
@@ -315,7 +315,7 @@ public partial class CS2_SimpleAdmin
 
         if (!Helper.ValidateSteamId(command.GetArg(1), out var steamId) || steamId == null)
         {
-            command.ReplyToCommand($"Invalid SteamID64.");
+            Helper.ReplyToCommand(caller, command, $"Invalid SteamID64.");
             return;
         }
 
@@ -353,7 +353,7 @@ public partial class CS2_SimpleAdmin
 
         var msg = $"Removed flags from '{steamid}'";
         if (command != null)
-            command.ReplyToCommand(msg);
+            Helper.ReplyToCommand(caller, command, msg);
         else if (caller != null && caller.IsValid)
             caller.PrintToChat(msg);
         else
@@ -373,13 +373,13 @@ public partial class CS2_SimpleAdmin
 
         if (!command.GetArg(1).StartsWith("#"))
         {
-            command.ReplyToCommand($"Group name must start with #.");
+            Helper.ReplyToCommand(caller, command, $"Group name must start with #.");
             return;
         }
 
         if (!command.GetArg(2).StartsWith($"@") && !command.GetArg(2).StartsWith($"#"))
         {
-            command.ReplyToCommand($"Invalid flag or group.");
+            Helper.ReplyToCommand(caller, command, $"Invalid flag or group.");
             return;
         }
 
@@ -411,7 +411,7 @@ public partial class CS2_SimpleAdmin
 
         var msg = $"Created group '{name}' with flags '{flags}'";
         if (command != null)
-            command.ReplyToCommand(msg);
+            Helper.ReplyToCommand(caller, command, msg);
         else if (caller != null && caller.IsValid)
             caller.PrintToChat(msg);
         else
@@ -431,7 +431,7 @@ public partial class CS2_SimpleAdmin
 
         if (!command.GetArg(1).StartsWith($"#"))
         {
-            command.ReplyToCommand($"Group name must start with #.");
+            Helper.ReplyToCommand(caller, command, $"Group name must start with #.");
             return;
         }
 
@@ -460,7 +460,7 @@ public partial class CS2_SimpleAdmin
 
         var msg = $"Removed group '{name}'";
         if (command != null)
-            command.ReplyToCommand(msg);
+            Helper.ReplyToCommand(caller, command, msg);
         else if (caller != null && caller.IsValid)
             caller.PrintToChat(msg);
         else
@@ -478,7 +478,7 @@ public partial class CS2_SimpleAdmin
     {
         if (DatabaseProvider == null) return;
         ReloadAdmins(caller);
-        command.ReplyToCommand("Reloaded sql admins and groups");
+        Helper.ReplyToCommand(caller, command, "Reloaded sql admins and groups");
     }
 
     /// <summary>
@@ -494,7 +494,7 @@ public partial class CS2_SimpleAdmin
         if (DatabaseProvider == null) return;
 
         _ = Instance.CacheManager?.ForceReInitializeCacheAsync();
-        command.ReplyToCommand("Reloaded bans");
+        Helper.ReplyToCommand(caller, command, "Reloaded bans");
     }
 
     /// <summary>
@@ -580,12 +580,12 @@ public partial class CS2_SimpleAdmin
         if (!AdminDisabledJoinComms.Add(caller.SteamID))
         {
             AdminDisabledJoinComms.Remove(caller.SteamID);
-            command.ReplyToCommand("From now on, you'll see penalty notifications");
+            Helper.ReplyToCommand(caller, command, "From now on, you'll see penalty notifications");
         }
         else
         {
             AdminDisabledJoinComms.Add(caller.SteamID);
-            command.ReplyToCommand($"You don't see penalty notifications now");
+            Helper.ReplyToCommand(caller, command, $"You don't see penalty notifications now");
         }
     }
 
@@ -600,7 +600,7 @@ public partial class CS2_SimpleAdmin
     {
         if (DatabaseProvider == null) return;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         Helper.LogCommand(caller, command);
@@ -773,7 +773,7 @@ public partial class CS2_SimpleAdmin
     {
         if (DatabaseProvider == null || _localizer == null || caller == null) return;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         Helper.LogCommand(caller, command);
@@ -931,7 +931,7 @@ public partial class CS2_SimpleAdmin
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
 
         if (targets == null) return;
         var playersToTarget = targets.Players
@@ -1062,7 +1062,7 @@ public partial class CS2_SimpleAdmin
                 {
                     var msg = $"Map {map} not found.";
                     if (command != null)
-                        command.ReplyToCommand(msg);
+                        Helper.ReplyToCommand(caller, command, msg);
                     else if (caller != null && caller.IsValid)
                         caller.PrintToChat(msg);
                     else
@@ -1152,20 +1152,20 @@ public partial class CS2_SimpleAdmin
 
         if (cvar == null)
         {
-            command.ReplyToCommand($"Cvar \"{command.GetArg(1)}\" not found.");
+            Helper.ReplyToCommand(caller, command, $"Cvar \"{command.GetArg(1)}\" not found.");
             return;
         }
 
         if (cvar.Name.Equals("sv_cheats") && !AdminManager.PlayerHasPermissions(new SteamID(caller!.SteamID), "@css/cheats"))
         {
-            command.ReplyToCommand($"You don't have permissions to change \"{command.GetArg(1)}\".");
+            Helper.ReplyToCommand(caller, command, $"You don't have permissions to change \"{command.GetArg(1)}\".");
             return;
         }
 
         Helper.LogCommand(caller, command);
         var value = command.GetArg(2);
         Server.ExecuteCommand($"{cvar.Name} {value}");
-        command.ReplyToCommand($"{callerName} changed cvar {cvar.Name} to {value}.");
+        Helper.ReplyToCommand(caller, command, $"{callerName} changed cvar {cvar.Name} to {value}.");
         Logger.LogInformation($"{callerName} changed cvar {cvar.Name} to {value}.");
     }
 
@@ -1181,7 +1181,7 @@ public partial class CS2_SimpleAdmin
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
         Helper.LogCommand(caller, command);
         Server.ExecuteCommand(command.ArgString);
-        command.ReplyToCommand($"{callerName} executed command {command.ArgString}.");
+        Helper.ReplyToCommand(caller, command, $"{callerName} executed command {command.ArgString}.");
         Logger.LogInformation($"{callerName} executed command ({command.ArgString}).");
     }
 

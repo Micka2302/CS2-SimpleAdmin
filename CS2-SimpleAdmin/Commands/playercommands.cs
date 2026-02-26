@@ -25,7 +25,7 @@ public partial class CS2_SimpleAdmin
     public void OnSlayCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
@@ -84,7 +84,7 @@ public partial class CS2_SimpleAdmin
     public void OnGiveCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
@@ -95,7 +95,7 @@ public partial class CS2_SimpleAdmin
         {
             if (CoreConfig.FollowCS2ServerGuidelines)
             {
-                command.ReplyToCommand($"Cannot Give {weaponName} because it's illegal to be given.");
+                Helper.ReplyToCommand(caller, command, $"Cannot Give {weaponName} because it's illegal to be given.");
                 return;
             }
         }
@@ -135,7 +135,10 @@ public partial class CS2_SimpleAdmin
             case > 1:
                 {
                     var weaponList = string.Join(", ", weapons.Select(w => w.EnumMemberValue));
-                    command?.ReplyToCommand($"Found weapons with a similar name: {weaponList}");
+                    if (command != null)
+                    {
+                        Helper.ReplyToCommand(caller, command, $"Found weapons with a similar name: {weaponList}");
+                    }
                     return;
                 }
         }
@@ -204,7 +207,7 @@ public partial class CS2_SimpleAdmin
     public void OnStripCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
@@ -268,7 +271,7 @@ public partial class CS2_SimpleAdmin
     {
         int.TryParse(command.GetArg(2), out var health);
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
@@ -329,7 +332,7 @@ public partial class CS2_SimpleAdmin
     {
         float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var speed);
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
@@ -397,7 +400,7 @@ public partial class CS2_SimpleAdmin
     {
         float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var gravity);
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
@@ -466,7 +469,7 @@ public partial class CS2_SimpleAdmin
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
         int.TryParse(command.GetArg(2), out var money);
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
@@ -529,7 +532,7 @@ public partial class CS2_SimpleAdmin
     {
         var damage = 0;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player.IsValid && player is { IsHLTV: false, PlayerPawn.Value.LifeState: (int)LifeState_t.LIFE_ALIVE }).ToList();
@@ -603,7 +606,7 @@ public partial class CS2_SimpleAdmin
         string _teamName;
         var teamNum = CsTeam.Spectator;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
@@ -719,7 +722,7 @@ public partial class CS2_SimpleAdmin
             return;
 
         // Retrieve the targets based on the command
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         // Filter out valid players from the targets
@@ -765,7 +768,7 @@ public partial class CS2_SimpleAdmin
         var newName = command.GetArg(2);
 
         // Retrieve the targets based on the command
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
 
         // Filter out valid players from the targets
@@ -815,7 +818,7 @@ public partial class CS2_SimpleAdmin
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
         if (targets == null) return;
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
@@ -884,7 +887,7 @@ public partial class CS2_SimpleAdmin
         IEnumerable<CCSPlayerController> playersToTeleport;
         CCSPlayerController? destinationPlayer;
 
-        var targets = GetTarget(command);
+        var targets = GetTarget(caller, command);
 
         if (command.ArgCount < 3)
         {
@@ -904,7 +907,7 @@ public partial class CS2_SimpleAdmin
         }
         else
         {
-            var destination = GetTarget(command, 2);
+            var destination = GetTarget(caller, command, 2);
             if (targets == null || destination == null || destination.Count() != 1)
                 return;
 
@@ -985,7 +988,7 @@ public partial class CS2_SimpleAdmin
             if (caller == null || caller.PlayerPawn?.Value?.LifeState != (int)LifeState_t.LIFE_ALIVE)
                 return;
 
-            var targets = GetTarget(command);
+            var targets = GetTarget(caller, command);
             if (targets == null || !targets.Any())
                 return;
 
@@ -997,7 +1000,7 @@ public partial class CS2_SimpleAdmin
         }
         else
         {
-            var destination = GetTarget(command);
+            var destination = GetTarget(caller, command);
             if (destination == null || destination.Count() != 1)
                 return;
 
@@ -1008,7 +1011,7 @@ public partial class CS2_SimpleAdmin
                 return;
 
             // Rest args = targets to teleport
-            var targets = GetTarget(command, 2);
+            var targets = GetTarget(caller, command, 2);
             if (targets == null || !targets.Any())
                 return;
 
@@ -1076,7 +1079,7 @@ public partial class CS2_SimpleAdmin
     //         return;
     //
     //     // Get the target players
-    //     var targets = GetTarget(command);
+    //     var targets = GetTarget(caller, command);
     //     if (targets == null || targets.Count() > 1) return;
     //
     //     var playersToTarget = targets.Players
